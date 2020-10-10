@@ -115,7 +115,7 @@ architecture Behavioral of GtpA7Wrapper is
           gt0_dmonitorout_out                     : out  std_logic_vector(14 downto 0);
           -------------------- Receive Ports - RX Equailizer Ports -------------------
           gt0_rxlpmhfhold_in                      : in   std_logic;
-          gt0_rxlpmhfovrden_in                    : in   std_logic;
+          --gt0_rxlpmhfovrden_in                    : in   std_logic;
           gt0_rxlpmlfhold_in                      : in   std_logic;
           --------------- Receive Ports - RX Fabric Output Control Ports -------------
           gt0_rxoutclkfabric_out                  : out  std_logic;
@@ -312,7 +312,7 @@ begin
          gt0_dmonitorout_out             =>      open,
          -------------------- Receive Ports - RX Equailizer Ports -------------------
          gt0_rxlpmhfhold_in              =>      '0',
-         gt0_rxlpmhfovrden_in            =>      '0',
+         -- gt0_rxlpmhfovrden_in            =>      '0',
          gt0_rxlpmlfhold_in              =>      '0',
          --------------- Receive Ports - RX Fabric Output Control Ports -------------
          gt0_rxoutclkfabric_out          =>      open,
