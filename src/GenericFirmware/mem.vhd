@@ -51,7 +51,8 @@ use ieee.std_logic_unsigned.all;
 entity bram_sdp is
 generic (
     DATA     : integer := 16;
-    ADDR     : integer := 10
+    ADDR     : integer := 10;
+    STYLE    : string  := "block"
 );
 port (
     -- Port A
@@ -70,6 +71,10 @@ architecture rtl of bram_sdp is
     -- Shared memory
     type mem_type is array ( (2**ADDR)-1 downto 0 ) of std_logic_vector(DATA-1 downto 0);
     signal mem : mem_type := (others => (others => '0'));
+
+    attribute ram_style : string;
+    attribute ram_style of mem : signal is STYLE;
+    
    begin
     
    process(clka)

@@ -189,7 +189,8 @@ architecture Behavioral of A21 is
    signal adcBufWrEn           : sl;
    signal adcBufReq            : sl;
    signal adcBufAck            : sl;
-   signal adcBufRdData         : slv(G_ADC_BIT_WIDTH-1 downto 0);
+   --signal adcBufRdData         : slv(G_ADC_BIT_WIDTH-1 downto 0);
+   signal adcBufRdData         : slv16;
    signal adcBufRdData32       : slv32;
    signal adcBufRdAddr         : slv(G_ADC_BIT_DEPTH-1 downto 0);
    signal adcBufCurAddr        : slv(G_ADC_BIT_DEPTH-1 downto 0);
@@ -197,7 +198,8 @@ architecture Behavioral of A21 is
    signal adcBufEthAddrInc     : sl := '0';
    signal adcBufEthAddrRst     : sl := '0';
    signal adcBufEthAddr        : slv(G_ADC_BIT_DEPTH-1 downto 0)           := (others => '0');
-   signal adcBufEthData        : slv(G_ADC_BIT_WIDTH-1 downto 0);
+   --signal adcBufEthData        : slv(G_ADC_BIT_WIDTH-1 downto 0);
+   signal adcBufEthData        : slv16;
    signal adcBufEthChan        : slv(5 downto 0);
    signal zeroThreshArr        : AdcDataArray(0 to G_N_CHN_TOT-1);
    signal adcBufThrMask        : slv64;
@@ -457,7 +459,7 @@ begin
    -------------------------------------------------
    -- Registers Control
    -------------------------------------------------
-   adcBufRdData32  <= X"00000" & adcBufRdData;
+   adcBufRdData32  <= X"0000" & adcBufRdData;
    U_RegControl : entity work.RegControl 
       port map (
          -- Clock and synchronous reset

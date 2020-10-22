@@ -16,7 +16,8 @@ use ieee.std_logic_unsigned.all;
 entity SpiDACx0508 is
    generic (
       SCLK_HALF_PERIOD_G : integer := 5;
-      GATE_DELAY_G       : time    := 1 ns 
+      GATE_DELAY_G       : time    := 1 ns;
+      N_CHAINED          : integer := 1
    );
    port(
       -- Clock and reset
@@ -49,6 +50,7 @@ architecture Behavioral of SpiDACx0508 is
       bitCount    : slv(5 downto 0);
       holdCount   : slv(7 downto 0);
       dataOut     : slv(23 downto 0);
+      chipCount   : slv(3 downto 0);
       op          : sl;
       ack         : sl;
       csb         : sl;
@@ -62,6 +64,7 @@ architecture Behavioral of SpiDACx0508 is
       rdData      => (others => '0'),
       bitCount    => (others => '0'),
       holdCount   => (others => '0'),
+      chipCount   => (others => '0'),
       dataOut     => (others => '0'),
       op          => '0',
       ack         => '0',
@@ -95,6 +98,7 @@ begin
             v.bitCount  := (others => '0');
             v.holdCount := (others => '0');
             v.rdData    := (others => '0');
+            v.chipCount := (others => '0');
             -- We have a request, drop CSB, prep the data out
             if dacReq = '1' then
                v.csb     := '0';
@@ -107,6 +111,7 @@ begin
 --               else
 --                  v.state := DONE_S;
 --               end if; 
+               v.chipCount := r.chipCount + 1;
             end if;
          when DATA_OUT_S  =>
             v.sclk := '1';
@@ -142,7 +147,14 @@ begin
             if (r.holdCount < SCLK_HALF_PERIOD_G) then
                v.holdCount := r.holdCount + 1;
             else
-               v.state := DONE_S; 
+               if r.chipCount = N_CHAINED then
+                  v.state := DONE_S; 
+               else
+                  v.bitCount  := (others => '0');
+                  v.holdCount := (others => '0');
+                  v.chipCount := r.chipCount + 1;
+                  v.state     := DATA_OUT_S; 
+               end if;
             end if;            
          when DONE_S =>
             v.ack  := '1';

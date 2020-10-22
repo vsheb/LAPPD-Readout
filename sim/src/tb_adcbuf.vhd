@@ -28,7 +28,7 @@ architecture Behavioral of tb_adcbuf is
    signal adcBufEthEna      : sl := '0';
    signal adcBufEthAddr     : slv(9 downto 0)           := (others => '0');
    signal adcBufEthChan     : slv(5 downto 0)           := (others => '0');
-   signal adcBufEthData     : slv(11 downto 0); --: AdcDataArray(0 downto 0) := (others => (others => '0'));
+   signal adcBufEthData     : slv16; --slv(11 downto 0); --: AdcDataArray(0 downto 0) := (others => (others => '0'));
 
    signal adcBufRdChn  : std_logic_vector(4 downto 0);
    signal adcBufRdAddr : std_logic_vector(9 downto 0);
@@ -54,7 +54,8 @@ architecture Behavioral of tb_adcbuf is
    signal regAck     : sl := '0';
    signal regWrEn    : sl := '0';
    signal regWrData  : slv(11 downto 0) := (others => '0');
-   signal regRdData  : slv(11 downto 0) := (others => '0');
+   --signal regRdData  : slv(11 downto 0) := (others => '0');
+   signal regRdData  : slv16 := (others => '0');
 
 begin
 
@@ -74,7 +75,7 @@ begin
 
       rstWrAddr        => '0',
 
-      pedSubOn         => '0',
+      pedSubOn         => '1',
       zeroThreshArr    => zeroThreshArr,
 
       WrEnable         => wrEna,
@@ -128,7 +129,8 @@ begin
       -- fill adc data
       for i in 0 to 100 loop
          wait until clk = '1';
-         wrData <= ( others => slv(to_signed(i*2,12)) );
+         --wrData <= ( others => slv(to_signed(i*2,12)) );
+         wrData <= ( others => x"800" );
          pedArr <= ( others => slv(to_signed(i,12)) );
          wrEna  <= '1';
          wait until clk = '1';

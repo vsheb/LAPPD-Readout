@@ -50,25 +50,22 @@ architecture behav of LappdPedMemory is
 
 begin
 
-   GEN_CHAN : for iCh in 0 to ADC_CHAN_NUMBER generate
-      -- temporary FIXME
-      GEN_IF : if (iCh > 7 and iCh < 16) or (iCh > 47 and iCh < 56) generate
-         U_Mem : entity work.bram_sp 
-            generic map (
-               WIDTH   => ADC_DATA_WIDTH,
-               DEPTH   => ADC_DATA_DEPTH,
-               STYLE   => "distributed"
-            )
-            port map (
-               clk  => clk,
-               we    => memWrEn(iCh),
-               en    => '1',
-               addr  => memAddrArr(iCh),
-               di    => memWrData,
+   GEN_CHAN : for iCh in 0 to ADC_CHAN_NUMBER-1 generate
+      U_Mem : entity work.bram_sp 
+         generic map (
+            WIDTH   => ADC_DATA_WIDTH,
+            DEPTH   => ADC_DATA_DEPTH,
+            STYLE   => "block"
+         )
+         port map (
+            clk  => clk,
+            we    => memWrEn(iCh),
+            en    => '1',
+            addr  => memAddrArr(iCh),
+            di    => memWrData,
 
-               do    => memRdArr(iCh)
-            );
-      end generate GEN_IF;
+            do    => memRdArr(iCh)
+         );
    end generate GEN_CHAN; 
 
    process (smpNumArr, regAddr, regChan, memAddr, evtBusy, memRdArr)

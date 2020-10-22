@@ -46,7 +46,7 @@ architecture Behavioral of tb_eth is
    signal adcBufEthAddrRst  : sl := '0';
    signal adcBufEthAddr     : slv(7 downto 0)           := (others => '0');
    signal adcBufEthChan     : slv(5 downto 0)           := (others => '0');
-   signal adcBufEthData     : slv(11 downto 0); --: AdcDataArray(0 downto 0) := (others => (others => '0'));
+   signal adcBufEthData     : slv16; --slv(11 downto 0); --: AdcDataArray(0 downto 0) := (others => (others => '0'));
 
    signal eventBuilderTrg : std_logic := '0';
    signal ethEvtData      : std_logic_vector(15 downto 0) := (others => '0');

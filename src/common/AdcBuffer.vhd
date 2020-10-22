@@ -44,14 +44,14 @@ entity AdcBuffer is
       rdEthEnable   : in  sl;
       rdEthChan     : in  slv(5 downto 0) := (others => '0');
       rdEthAddr     : in  slv(ADC_DATA_DEPTH-1 downto 0);
-      rdEthData     : out slv(ADC_DATA_WIDTH-1 downto 0);
+      rdEthData     : out slv16; --(ADC_DATA_WIDTH-1 downto 0);
       
       -- reg interface 
       rdReq         : in  sl;
       rdChan        : in  slv(5 downto 0);
       rdAddr        : in  slv(ADC_DATA_DEPTH-1 downto 0);
       rdAck         : out sl;
-      rdData        : out slv(ADC_DATA_WIDTH-1 downto 0);
+      rdData        : out slv16; --(ADC_DATA_WIDTH-1 downto 0);
 
       -- zero suppressed hits mask
       hitsThrMask   : out slv(ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1 downto 0); 
@@ -67,7 +67,8 @@ architecture adcBufArch of AdcBuffer is
    -- local types definitions
    ----------------------------------------------
    type AddrArrayType        is array(ADC_CHIPS_NUMBER-1 downto 0) of slv(ADC_DATA_DEPTH-1 downto 0);
-   subtype AdcDataVectorType is std_logic_vector(ADC_CHANNELS_NUMBER*ADC_DATA_WIDTH-1 downto 0);
+   --subtype AdcDataVectorType is std_logic_vector(ADC_CHANNELS_NUMBER*ADC_DATA_WIDTH-1 downto 0);
+   subtype AdcDataVectorType is std_logic_vector(ADC_CHANNELS_NUMBER*16-1 downto 0);
    type AdcDataVecArrayType  is array(ADC_CHIPS_NUMBER-1 downto 0) of AdcDataVectorType;
 
    ----------------------------------------------
@@ -75,6 +76,7 @@ architecture adcBufArch of AdcBuffer is
    ----------------------------------------------
    constant bufAddrMax        : slv(ADC_DATA_DEPTH-1 downto 0)    := (others => '1');
    constant subMin            : signed(ADC_DATA_WIDTH-1 downto 0) := (ADC_DATA_WIDTH-1 => '1', others => '0');
+   constant subMax            : signed(ADC_DATA_WIDTH-1 downto 0) := (ADC_DATA_WIDTH-1 => '0', others => '1');
    
    ----------------------------------------------
    -- signals
@@ -82,7 +84,7 @@ architecture adcBufArch of AdcBuffer is
    signal   bufCurAddr        : AddrArrayType                     := (others => (others => '0')); 
 
    signal   wrData_r          : AdcDataArray(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
-   signal   adcDataPed        : AdcDataArray(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
+   signal   adcDataPedSub        : AdcDataArray(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
 
 
    signal   wrDataMerged      :  AdcDataVecArrayType              := (others => (others => '0'));
@@ -93,8 +95,8 @@ architecture adcBufArch of AdcBuffer is
    signal   wrEnable_r        : slv(ADC_CHIPS_NUMBER-1 downto 0)  := (others => '0');
    signal   wrEnable_2r       : slv(ADC_CHIPS_NUMBER-1 downto 0)  := (others => '0');
    signal   rdChan_i          : slv(5 downto 0)                   := (others => '0');
-   signal   rdData_r          : slv(ADC_DATA_WIDTH-1 downto 0);
-   signal   ethData_r          : slv(ADC_DATA_WIDTH-1 downto 0);
+   signal   rdData_r          : slv16; --(ADC_DATA_WIDTH-1 downto 0);
+   signal   ethData_r         : slv16; --(ADC_DATA_WIDTH-1 downto 0);
                                                                   
    signal   rdAdc             : natural                           := 0; -- adc chip index 
    signal   rdAdcChan_i       : natural                           := 0; -- adc channel number
@@ -110,6 +112,10 @@ architecture adcBufArch of AdcBuffer is
    signal   pedArr_r          : AdcDataArray(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1);
 
    signal   hitsMask_i        : slv(ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1 downto 0) := (others => '0');
+
+   type     SignedArrayType     is array(integer range<>) of signed(ADC_DATA_WIDTH-1 downto 0);
+   signal   minAdcArr         : SignedArrayType(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
+   --signal   maxAdcArr         : SignedArrayType(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
 
 
    ----------------------------------------------
@@ -168,25 +174,49 @@ begin
    GEN_ADC_CHIP : for iAdc in 0 to ADC_CHIPS_NUMBER-1 generate
       GEN_ADC_CHAN : for iChan in 0 to ADC_CHANNELS_NUMBER-1 generate
          process (sysClk)
-            variable adc : integer := 0;
-            variable ped : integer := 0;
-            variable sub : integer := 0;
+            variable adc    : integer := 0;
+            variable ped    : integer := 0;
+            variable sub    : integer := 0;
+            variable min    : integer := 0;
+            variable fla    : std_logic_vector(3 downto 0) := (others => '0');
             constant ch : integer := ADC_CHANNELS_NUMBER*iAdc + iChan;
          begin
             if rising_edge (sysClk) then
+               
+               --maxAdcArr(ch) <= subMax - ped;
+
                adc := to_integer(signed(wrData_r(ch)));
+
                if pedSubOn_r = '1' then
                   ped := to_integer(signed(pedArr_r(ch)));
                else
                   ped := 0;
                end if;
-               sub := adc - ped;
-               if sub < to_integer(subMin) then
-                  sub := to_integer(subMin); 
+
+               --minAdcArr(ch) <= subMin + ped;
+               min := to_integer(subMin) + ped;
+
+               if adc < min then
+                  -- underflow
+                  sub := to_integer(subMin);
+                  fla := b"0001";
+               elsif adc = subMax then
+                  --overflow
+                  fla := b"0010";
+                  sub := adc;
+               else
+                  sub := adc - ped;
+                  fla := b"0000";
                end if;
-               wrDataMerged(iAdc)(ADC_DATA_WIDTH*(iChan+1)-1 downto ADC_DATA_WIDTH*(iChan)) <= 
-                  std_logic_vector(to_signed(sub,ADC_DATA_WIDTH));
-               adcDataPed(ch) <= std_logic_vector(to_signed(sub,ADC_DATA_WIDTH));
+
+               --if sub < to_integer(subMin) then
+                  --sub := to_integer(subMin); 
+               --end if;
+
+               --wrDataMerged(iAdc)(ADC_DATA_WIDTH*(iChan+1)-1 downto ADC_DATA_WIDTH*(iChan)) <= 
+               wrDataMerged(iAdc)(16*(iChan+1)-1 downto 16*(iChan)) <= 
+                  std_logic_vector(to_signed(sub,ADC_DATA_WIDTH)) & fla;
+               adcDataPedSub(ch) <= std_logic_vector(to_signed(sub,ADC_DATA_WIDTH));
                
             end if;
          end process;
@@ -205,7 +235,7 @@ begin
       -- generate BRAM instances
       U_Mem : entity work.bram_sdp 
          generic map (
-            DATA  => ADC_DATA_WIDTH * ADC_CHANNELS_NUMBER,
+            DATA  => 16*ADC_CHANNELS_NUMBER, --ADC_DATA_WIDTH * ADC_CHANNELS_NUMBER,
             ADDR  => ADC_DATA_DEPTH
          )
          port map (
@@ -245,7 +275,7 @@ begin
                   hitsMask_i(ch) <= '0';
                else 
                   if wrEnable_2r(iAdc) = '1' then
-                     if signed(adcDataPed(ch)) >= signed(zeroThreshArr(ch)) then
+                     if signed(adcDataPedSub(ch)) >= signed(zeroThreshArr(ch)) then
                         hitsMask_i(ch) <= '1';
                      end if;
                   end if;
@@ -281,8 +311,10 @@ begin
          rdReqRR   <= rdReqR;
 
          rdAck     <= rdReqR;
-         rdData_r  <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i); 
-         ethData_r <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i);
+         --rdData_r  <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i); 
+         --ethData_r <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i);
+         rdData_r  <= localRdData(rdAdc)((rdAdcChan_i+1)*16-1 downto 16*rdAdcChan_i); 
+         ethData_r <= localRdData(rdAdc)((rdAdcChan_i+1)*16-1 downto 16*rdAdcChan_i);
 
          if rdAddr(7 downto 0) = x"01" then
             rdAddr_regIfc <= (others => '0');

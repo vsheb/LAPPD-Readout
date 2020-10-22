@@ -38,7 +38,7 @@ entity LappdEventBuilder is
       rdAddr            : out slv(ADC_DATA_DEPTH-1 downto 0);
       rdChan            : out slv(5 downto 0);
       -- ADC data
-      rdData            : in slv(11 downto 0);
+      rdData            : in slv(15 downto 0);
       
       -- DRS Control ports
       drsReq            : out sl;
@@ -375,47 +375,6 @@ begin
             --r_nxt.state   <= INI_EVT_HDR_S;
             r_nxt.state   <= INI_HIT_HDR_S;
 
-         -- initialize event header
-         --when INI_EVT_HDR_S => 
-            --r_nxt.dbg <= X"0003";
-            --evtHeader.magic           := C_EVT_HEADER_MAGIC;
-            --evtHeader.board_id        := boardID;
-            --evtHeader.evt_type        := (others => '0');
-            --evtHeader.adc_bit_width   := b"100"; -- 0x4
-            --evtHeader.reserved        := (others => '0');
-            --evtHeader.evt_number      := r_cur.evtNumber; 
-            --evtHeader.evt_size        := r_cur.evtSize;
-            --evtHeader.num_hits        := std_logic_vector(to_unsigned(r_cur.hitsNumber,8)); --X"01";
-            --evtHeader.trg_timestamp_h := r_cur.trgTimestamp(63 downto 32); -- X"0000_0000"; 
-            --evtHeader.trg_timestamp_l := r_cur.trgTimestamp(31 downto 0);  --X"abcd_1234";
-            --evtHeader.reserved2       := X"FFFF_AAAA_FFFF_AAAA";
-            
-            --r_nxt.evtNumber <= r_cur.evtNumber + 1;
-            --makeEvtHeaderDataArray(evtHeader, evtHeaderWordsArray);
-            --r_nxt.evtHeaderWordsArray <= evtHeaderWordsArray;
-
-            --r_nxt.evtNFrames          <= C_LappdNumberOfEvtHeaderWords;
-            --if ethBusy = '0' then
-               --r_nxt.evtTrigger <= '1';
-               --r_nxt.state  <= SND_EVT_HDR_S;
-               --r_nxt.iWordCnt <= r_cur.iWordCnt + 1; 
-               --r_nxt.evtData  <= fSwapBytes(evtHeaderWordsArray(r_cur.iWordCnt));      
-            --end if; 
-
-            --r_nxt.drsOffset10 <= r_cur.drsStopSample; 
-
-         ---- send event header
-         --when SND_EVT_HDR_S =>
-            --r_nxt.dbg <= X"0004";
-            --r_nxt.evtTrigger <= '0';
-            --if ethReady = '1' then
-               --r_nxt.iWordCnt <= r_cur.iWordCnt + 1; 
-               --r_nxt.evtData  <= fSwapBytes(r_cur.evtHeaderWordsArray(r_cur.iWordCnt));
-            --end if;
-            --if r_cur.iWordCnt = C_LappdNumberOfEvtHeaderWords-1 then
-               --r_nxt.state <= INI_HIT_HDR_S;
-               --r_nxt.iWordCnt <= 0;
-            --end if;
          
          -- initialize hit header
          when INI_HIT_HDR_S =>
@@ -431,13 +390,6 @@ begin
             hitHeader.channel       := std_logic_vector(to_unsigned(r_cur.adcChannel,16));
             hitHeader.num_samples   := std_logic_vector(to_unsigned(r_cur.nSamples,16)); 
             hitHeader.drs4_stop     := std_logic_vector(to_unsigned(0,6)) & r_cur.drsStopSample;
-
-            --hitHeader.magic           := C_HIT_HEADER_MAGIC;
-            --hitHeader.channel_id      := std_logic_vector(to_unsigned(r_cur.adcChannel, 8));
-            --hitHeader.drs4_offset     := x"0" & b"00" & r_cur.drsOffset10;
-            --hitHeader.seq             := std_logic_vector(to_unsigned(r_cur.iFragment, 8));
-            --hitHeader.payload_size    := std_logic_vector(to_unsigned(r_cur.nSamples*2, 16));
-            --hitHeader.trg_timestamp_l := r_cur.trgTimestamp(31 downto 0); -- x"abcd_1234"; --(others => '0');
 
 
             makeHitHeaderDataArray(hitHeader, hitHeaderWordsArray);
@@ -485,8 +437,8 @@ begin
          when SND_HIT_PLD_S =>
             r_nxt.dbg <= X"0007";
             --r_nxt.evtData  <= fSwapBytes(rdData & (15-G_ADC_BIT_WIDTH downto 0 => '0'));
-            r_nxt.evtData  <= rdData & (15-G_ADC_BIT_WIDTH downto 0 => '0');
-            --r_nxt.evtData  <= fSwapBytes(r_cur.rdDataExt);
+            --r_nxt.evtData  <= rdData & (15-G_ADC_BIT_WIDTH downto 0 => '0');
+            r_nxt.evtData  <= rdData;
 
             if r_cur.iWordCnt = r_cur.nSamplInPacket then
                --r_nxt.evtData  <= fSwapBytes(C_HIT_FOOTER_MAGIC);

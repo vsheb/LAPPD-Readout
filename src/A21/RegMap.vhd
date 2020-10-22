@@ -251,6 +251,9 @@ begin
   
   
   U_SpiDAC : entity work.SpiDACx0508
+     generic map (
+      N_CHAINED => 2
+     )
      port map (
        -- Clock and reset
        sysClk    => clk,     --: in sl;
