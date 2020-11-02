@@ -40,13 +40,13 @@
     <Option Name="WTVcsLaunchSim" Val="0"/>
     <Option Name="WTRivieraLaunchSim" Val="0"/>
     <Option Name="WTActivehdlLaunchSim" Val="0"/>
-    <Option Name="WTXSimExportSim" Val="17"/>
-    <Option Name="WTModelSimExportSim" Val="17"/>
-    <Option Name="WTQuestaExportSim" Val="17"/>
-    <Option Name="WTIesExportSim" Val="17"/>
-    <Option Name="WTVcsExportSim" Val="17"/>
-    <Option Name="WTRivieraExportSim" Val="17"/>
-    <Option Name="WTActivehdlExportSim" Val="17"/>
+    <Option Name="WTXSimExportSim" Val="23"/>
+    <Option Name="WTModelSimExportSim" Val="23"/>
+    <Option Name="WTQuestaExportSim" Val="23"/>
+    <Option Name="WTIesExportSim" Val="23"/>
+    <Option Name="WTVcsExportSim" Val="23"/>
+    <Option Name="WTRivieraExportSim" Val="23"/>
+    <Option Name="WTActivehdlExportSim" Val="23"/>
     <Option Name="GenerateIPUpgradeLog" Val="TRUE"/>
     <Option Name="XSimRadix" Val="hex"/>
     <Option Name="XSimTimeUnit" Val="ns"/>
@@ -63,6 +63,24 @@
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_iomodule_0_0/base_mb_iomodule_0_0.xci">
+          <Proxy FileSetName="base_mb_iomodule_0_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_3_0/base_mb_axis_data_fifo_3_0.xci">
+          <Proxy FileSetName="base_mb_axis_data_fifo_3_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_v10_0/base_mb_ilmb_v10_0.xci">
+          <Proxy FileSetName="base_mb_ilmb_v10_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_v10_0/base_mb_dlmb_v10_0.xci">
+          <Proxy FileSetName="base_mb_dlmb_v10_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_bram_if_cntlr_0/base_mb_dlmb_bram_if_cntlr_0.xci">
+          <Proxy FileSetName="base_mb_dlmb_bram_if_cntlr_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_bram_if_cntlr_0/base_mb_ilmb_bram_if_cntlr_0.xci">
+          <Proxy FileSetName="base_mb_ilmb_bram_if_cntlr_0"/>
+        </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_0_0/base_mb_axis_data_fifo_0_0.xci">
           <Proxy FileSetName="base_mb_axis_data_fifo_0_0"/>
         </CompFileExtendedInfo>
@@ -92,24 +110,6 @@
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_dwidth_converter_2_0/base_mb_axis_dwidth_converter_2_0.xci">
           <Proxy FileSetName="base_mb_axis_dwidth_converter_2_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_3_0/base_mb_axis_data_fifo_3_0.xci">
-          <Proxy FileSetName="base_mb_axis_data_fifo_3_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_bram_if_cntlr_0/base_mb_dlmb_bram_if_cntlr_0.xci">
-          <Proxy FileSetName="base_mb_dlmb_bram_if_cntlr_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_v10_0/base_mb_dlmb_v10_0.xci">
-          <Proxy FileSetName="base_mb_dlmb_v10_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_bram_if_cntlr_0/base_mb_ilmb_bram_if_cntlr_0.xci">
-          <Proxy FileSetName="base_mb_ilmb_bram_if_cntlr_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_v10_0/base_mb_ilmb_v10_0.xci">
-          <Proxy FileSetName="base_mb_ilmb_v10_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_iomodule_0_0/base_mb_iomodule_0_0.xci">
-          <Proxy FileSetName="base_mb_iomodule_0_0"/>
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_lmb_bram_0/base_mb_lmb_bram_0.xci">
           <Proxy FileSetName="base_mb_lmb_bram_0"/>
@@ -355,6 +355,14 @@
           <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../elf/eevee.elf">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="ScopedToRef" Val="base_mb"/>
+          <Attr Name="ScopedToCell" Val="microblaze_0"/>
+          <Attr Name="IsVisible" Val="1"/>
         </FileInfo>
       </File>
       <Config>

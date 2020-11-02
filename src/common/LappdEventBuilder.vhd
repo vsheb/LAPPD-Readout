@@ -320,7 +320,7 @@ begin
 
 
          when TRG_RSVD_S =>
-            r_nxt.seqNum        <= (others => '0');
+            --r_nxt.seqNum        <= (others => '0');
             r_nxt.adcChannel <= fGetNextHit(r_cur.hitsMask);
             r_nxt.state      <= SEND_DRS_REQ_S;
             if r_cur.udpNumOfPorts = x"0000" or udpNumOfPorts = x"0001" then
@@ -408,9 +408,10 @@ begin
                --r_nxt.evtData <= fSwapBytes(hitHeaderWordsArray(r_cur.iWordCnt));
                r_nxt.evtData <= hitHeaderWordsArray(r_cur.iWordCnt);
                r_nxt.state  <= SND_HIT_HDR_S;
-               if r_cur.udpCurrentPort = r_cur.udpStartPort then
-                  r_nxt.seqNum <= r_cur.seqNum + 1;
-               end if;
+               r_nxt.seqNum <= r_cur.seqNum + 1;
+               --if r_cur.udpCurrentPort = r_cur.udpStartPort then
+                  --r_nxt.seqNum <= r_cur.seqNum + 1;
+               --end if;
             end if;
 
          -- send hit header
