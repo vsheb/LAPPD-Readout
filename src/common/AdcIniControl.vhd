@@ -35,12 +35,15 @@ architecture Behavioral of AdcIniControl is
 
    signal iAdcTxTrig          : std_logic := '0';
    signal adcTxTrigR          : std_logic := '0';
+   signal adcTxTrigRR         : std_logic := '0';
    signal adcTxTrigRCopy      : std_logic := '0';
    signal iTxTrgEdge          : std_logic := '0';
+   signal iTxTrgEdgeR         : std_logic := '0';
+   signal iTxTrgEdgeRR        : std_logic := '0';
    signal localTxTrg          : std_logic := '0';
-   signal txTrgCnt            : std_logic_vector(2 downto 0)  := (others => '0');
+   signal txTrgCnt            : std_logic_vector(1 downto 0)  := (others => '0');
    signal localAdcReset       : std_logic := '0';
-   signal adcResetCnt         : std_logic_vector(3 downto 0)  := (others => '0');
+   signal adcResetCnt         : std_logic_vector(4 downto 0)  := (others => '0');
    signal adcSyncCnt          : std_logic_vector(1 downto 0) := (others => '0');
 
    signal bufRCE_i            : std_logic := '1';
@@ -85,16 +88,28 @@ begin
    process (sysClk)
    begin
       if rising_edge (sysClk) then
+         iTxTrgEdgeR <= iTxTrgEdge;
+         iTxTrgEdgeRR <= iTxTrgEdgeR;
+         --adcTxTrigR   <= iAdcTxTrig;
          if iTxTrgEdge = '1' then
             localTxTrg <= '1';
          end if;
          if localTxTrg = '1' and adcConvClkR = '1' then
             iAdcTxTrig <= '1';
+            txTrgCnt   <= (others => '1');
          end if;
          if iAdcTxTrig = '1' and adcConvClkR = '1' then
             localTxTrg <= '0';
             iAdcTxTrig <= '0';
          end if;
+         --if iAdcTxTrig = '1' then
+            --txTrgCnt <= txTrgCnt - 1;
+         --end if;
+         --if txTrgCnt = b"00" then
+            --txTrgCnt   <= (others => '0');
+            --iAdcTxTrig <= '0';
+            --localTxTrg <= '0';
+         --end if;
       end if;
    end process;
 
@@ -103,18 +118,19 @@ begin
       INIT => '0'
    )  
    port map (   
-      Q  => adcTxTrigR,
+      Q  => adcTxTrig,
       C  => sysClk,
       CE => '1',
       R  => '0',
-      D  => iAdcTxTrig
+      D  => adcTxTrigR
    );
+   --adcTxTrig <= adcTxTrigRR;
    adcTxTrig <= adcTxTrigR;
 
    process (sysClk)
    begin
       if rising_edge (sysClk) then
-         adcTxTrigRCopy <= iAdcTxTrig;
+         adcTxTrigRCopy <= iTxTrgEdgeRR;
          if adcTxTrigRCopy = '1' and adcConvClkR = '1' then
             adcSyncCnt <=  (others => '0');
          else
@@ -129,25 +145,16 @@ begin
    end process;
 
 
+   pulseShaperReset_U : entity work.PulseShaper
+      port map (
+         clk => sysClk,
+         rst => syncRst,
+         len => x"002f",
+         del => (others => '0'),
+         din => adcResetCmd,
+         dou => localAdcReset
+      );
 
-   -- generate RESET signal 
-   process(sysClk) 
-   begin
-      if rising_edge(sysClk) then
-         if adcResetCmd = '1' then
-            localAdcReset <= '1';
-            adcResetCnt <= (others => '1');
-         end if;
-         if localAdcReset = '1' then
-            adcResetCnt <= adcResetCnt - '1';
-         end if;
-         if adcResetCnt = b"000" then
-            localAdcReset <= '0';
-         end if;
-      end if;
-      
-   end process;
-   
    adcReset <= localAdcReset;
    -------------------------------------------------------------------------
 

@@ -85,6 +85,7 @@ architecture Behavioral of AdcReadout is
    
    signal iRst               : std_logic;
    signal iRstDivClk         : std_logic;
+   signal iRstDivClkEx       : std_logic;
 
    signal iDelayCtrlRdy      : std_logic;
 
@@ -311,7 +312,7 @@ begin
       port map (
          RDY    => iDelayCtrlRdy, -- 1-bit output: Ready output
          REFCLK => iDelayRefClk,  -- 1-bit input: Reference clock input
-         RST    => iRst
+         RST    => '0' --iRst
       );
 
    ----------------------------------------------------
@@ -390,7 +391,7 @@ begin
          DDLY         => adcFrClkShifted,     -- 1-bit input: Serial data from IDELAYE2
          OFB          => '0',                 -- 1-bit input: Data feedback from OSERDESE2
          OCLKB        => '0',                 -- 1-bit input: High speed negative edge output clock
-         RST          => iRst,             -- 1-bit input: Active high asynchronous reset
+         RST          => iRstDivClkEx,        -- 1-bit input: Active high asynchronous reset
          SHIFTIN1     => '0',                 -- SHIFTIN1, SHIFTIN2: 1-bit (each) input: Data width expansion input ports
          SHIFTIN2     => '0'
       );
@@ -473,7 +474,7 @@ begin
             DDLY         => adcDataShifted(i),   -- 1-bit input: Serial data from IDELAYE2
             OFB          => '0',                 -- 1-bit input: Data feedback from OSERDESE2
             OCLKB        => '0',                 -- 1-bit input: High speed negative edge output clock
-            RST          => iRst,             -- 1-bit input: Active high asynchronous reset
+            RST          => iRstDivClkEx,             -- 1-bit input: Active high asynchronous reset
             SHIFTIN1     => '0',                 -- SHIFTIN1, SHIFTIN2: 1-bit (each) input: Data width expansion input ports
             SHIFTIN2     => '0'
          );
@@ -625,6 +626,16 @@ begin
         clkb => adcDoClkBufR,
         outb => iRstDivClk
      );
+
+   rstShape_U : entity work.PulseShaper
+      port map(
+        clk => sysClk,
+        rst => '0',
+        len => x"0008",
+        del => x"0000",
+        din => iRstDivClk,
+        dou => iRstDivClkEx
+      );
    
    process(sysClk)
    begin

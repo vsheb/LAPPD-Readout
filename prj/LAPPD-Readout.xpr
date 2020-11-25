@@ -63,27 +63,6 @@
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_iomodule_0_0/base_mb_iomodule_0_0.xci">
-          <Proxy FileSetName="base_mb_iomodule_0_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_3_0/base_mb_axis_data_fifo_3_0.xci">
-          <Proxy FileSetName="base_mb_axis_data_fifo_3_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_v10_0/base_mb_ilmb_v10_0.xci">
-          <Proxy FileSetName="base_mb_ilmb_v10_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_v10_0/base_mb_dlmb_v10_0.xci">
-          <Proxy FileSetName="base_mb_dlmb_v10_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_bram_if_cntlr_0/base_mb_dlmb_bram_if_cntlr_0.xci">
-          <Proxy FileSetName="base_mb_dlmb_bram_if_cntlr_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_bram_if_cntlr_0/base_mb_ilmb_bram_if_cntlr_0.xci">
-          <Proxy FileSetName="base_mb_ilmb_bram_if_cntlr_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_0_0/base_mb_axis_data_fifo_0_0.xci">
-          <Proxy FileSetName="base_mb_axis_data_fifo_0_0"/>
-        </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_1_0/base_mb_axis_data_fifo_1_0.xci">
           <Proxy FileSetName="base_mb_axis_data_fifo_1_0"/>
         </CompFileExtendedInfo>
@@ -92,6 +71,9 @@
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_dwidth_converter_0_0/base_mb_axis_dwidth_converter_0_0.xci">
           <Proxy FileSetName="base_mb_axis_dwidth_converter_0_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_0_0/base_mb_axis_data_fifo_0_0.xci">
+          <Proxy FileSetName="base_mb_axis_data_fifo_0_0"/>
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_dwidth_converter_1_0/base_mb_axis_dwidth_converter_1_0.xci">
           <Proxy FileSetName="base_mb_axis_dwidth_converter_1_0"/>
@@ -110,6 +92,24 @@
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_dwidth_converter_2_0/base_mb_axis_dwidth_converter_2_0.xci">
           <Proxy FileSetName="base_mb_axis_dwidth_converter_2_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_axis_data_fifo_3_0/base_mb_axis_data_fifo_3_0.xci">
+          <Proxy FileSetName="base_mb_axis_data_fifo_3_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_bram_if_cntlr_0/base_mb_dlmb_bram_if_cntlr_0.xci">
+          <Proxy FileSetName="base_mb_dlmb_bram_if_cntlr_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_dlmb_v10_0/base_mb_dlmb_v10_0.xci">
+          <Proxy FileSetName="base_mb_dlmb_v10_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_bram_if_cntlr_0/base_mb_ilmb_bram_if_cntlr_0.xci">
+          <Proxy FileSetName="base_mb_ilmb_bram_if_cntlr_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_ilmb_v10_0/base_mb_ilmb_v10_0.xci">
+          <Proxy FileSetName="base_mb_ilmb_v10_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_iomodule_0_0/base_mb_iomodule_0_0.xci">
+          <Proxy FileSetName="base_mb_iomodule_0_0"/>
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="base_mb.bd" FileRelPathName="ip/base_mb_lmb_bram_0/base_mb_lmb_bram_0.xci">
           <Proxy FileSetName="base_mb_lmb_bram_0"/>
@@ -272,6 +272,12 @@
         </FileInfo>
       </File>
       <File Path="$PPRDIR/../src/GenericFirmware/EdgeDetector.vhd">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../src/GenericFirmware/PulseShaper.vhd">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="simulation"/>

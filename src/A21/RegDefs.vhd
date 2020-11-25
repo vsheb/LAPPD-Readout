@@ -127,14 +127,15 @@ package RegDefs is
   ---------------------------------------------------
 
 
-  constant C_CMD_RESET_BIT    : natural := 0;
-  constant C_CMD_ADCCLEAR_BIT : natural := 1;
-  constant C_CMD_ADCSTART_BIT : natural := 2; -- obsolete
-  constant C_CMD_ADCTXTRG_BIT : natural := 3;
-  constant C_CMD_ADCRESET_BIT : natural := 4;
-  constant C_CMD_ADCBTSLP_BIT : natural := 5;
-  constant C_CMD_READREQ_BIT  : natural := 6;
-  constant C_CMD_RUNRESET_BIT : natural := 7;
+  constant C_CMD_RESET_BIT         : natural := 0;
+  constant C_CMD_ADCCLEAR_BIT      : natural := 1;
+  constant C_CMD_ADCSTART_BIT      : natural := 2; -- obsolete
+  constant C_CMD_ADCTXTRG_BIT      : natural := 3;
+  constant C_CMD_ADCRESET_BIT      : natural := 4;
+  constant C_CMD_ADCBTSLP_BIT      : natural := 5;
+  constant C_CMD_READREQ_BIT       : natural := 6;
+  constant C_CMD_RUNRESET_BIT      : natural := 7;
+  constant C_CMD_ADCRDRESET_BIT    : natural := 8;
 
   constant C_MODE_ADCBUF_WREN_BIT  : natural := 0;
   constant C_MODE_DRS_TRANS_BIT    : natural := 1;
@@ -146,6 +147,8 @@ package RegDefs is
   constant C_MODE_CLKIN_TRG_BIT    : natural := 7;
   constant C_MODE_PEDSUB_EN_BIT    : natural := 8;
   constant C_MODE_ZERSUP_EN_BIT    : natural := 9;
+  constant C_MODE_ADC_PDN_F_BIT    : natural := 10;
+  constant C_MODE_ADC_PDN_G_BIT    : natural := 11;
 
   function vec2str(value : std_logic_vector) return string;
 

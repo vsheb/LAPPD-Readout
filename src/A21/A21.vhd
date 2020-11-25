@@ -42,6 +42,8 @@ entity A21 is
       adcDataInN : in slv(G_N_ADC_LINES*G_N_ADC_CHIPS-1 downto 0);
       adcClkP    : out slv(G_N_ADC_CHIPS-1 downto 0);
       adcClkN    : out slv(G_N_ADC_CHIPS-1 downto 0);
+      adcPdnFast : out std_logic;
+      adcPdnGlb  : out std_logic;
 
       -- DRS4 ports
       --drsResetN   : out std_logic; not connected in PCB
@@ -269,7 +271,6 @@ architecture Behavioral of A21 is
    -- SPI ADC interface signals
    signal iAdcSClk       : sl;
    signal iAdcSout       : sl;
-
    
 
    ----------------------------------------------
@@ -282,6 +283,8 @@ architecture Behavioral of A21 is
    alias a_modeUseClkIn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_CLKIN_TRG_BIT);
    alias a_modePedSubEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_PEDSUB_EN_BIT);
    alias a_modeZerSupEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ZERSUP_EN_BIT);
+   alias a_modeAdcPdnF  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_F_BIT);
+   alias a_modeAdcPdnG  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_G_BIT);
 
    -- CMD register
    alias a_cmdReset      : sl is regArrCfg(getRegInd("CMD"))(C_CMD_RESET_BIT);
@@ -289,6 +292,7 @@ architecture Behavioral of A21 is
    alias a_cmdDrsRdStart : sl is regArrCfg(getRegInd("CMD"))(C_CMD_READREQ_BIT);
    alias a_cmdAdcTxTrig  : sl is regArrCfg(getRegInd("CMD"))(C_CMD_ADCTXTRG_BIT);
    alias a_cmdAdcReset   : sl is regArrCfg(getRegInd("CMD"))(C_CMD_ADCRESET_BIT);
+   alias a_cmdAdcRdReset : sl is regArrCfg(getRegInd("CMD"))(C_CMD_ADCRDRESET_BIT);
 
    alias a_regClkRatio    : slv32 is regArrCfg(getRegInd("DRSREFCLKRATIO"));
    alias a_drsNSamples    : slv16 is regArrCfg(getRegInd("ADCBUFNUMWORDS"))(15 downto 0);
@@ -618,7 +622,7 @@ begin
    begin
       if rising_edge(ethClk125) then
          clkCnt        <= clkCnt + 1;    
-         adcConvClk    <= clkCnt(0);
+         adcConvClk    <= clkCnt(1);
          -- delay for one more clk cycle 
          -- because there is one extra DFF in AdcReadout for IOB packing
          adcConvClkReg <= adcConvClk; 
@@ -665,7 +669,7 @@ begin
       port map(
          -- clocks/reset
          sysClk        => ethClk125, 
-         syncRst       => a_cmdReset,
+         syncRst       => a_cmdAdcRdReset, --a_cmdReset or a_cmdAdcRdReset,
          iDelayRefClk  => iDelayRefClk,
 
          -- adc conversion clock
@@ -712,6 +716,9 @@ begin
    end generate ADCDLY_CHIP;
 
    regArrSta(getRegInd("STATUS"))(G_N_ADC_CHIPS-1 downto 0) <= iAdcBitslipGood;
+
+   adcPdnFast <= a_modeAdcPdnF;
+   adcPdnGlb  <= a_modeAdcPdnG;
    -------------------------------------------------
 
 

@@ -9,6 +9,7 @@ set_property PACKAGE_PIN E6 [get_ports gtClkN]
 create_clock -period 8.000 -name gtrefclk -add [get_ports gtClkP]
 #create_clock -period 6.400 -name gtrefclk -add [get_ports gtClkP]
 create_clock -period 2.667 -name adcclk -add [get_ports adcDoClkP]
+#create_clock -period 1.3333 -name adcclk -add [get_ports adcDoClkP]
 
 
 # New nishiphy for artix-7 watchdog fix
@@ -134,9 +135,13 @@ set_property IOSTANDARD LVDS_25 [get_ports adcDataInN*]
 #############################################################
 set_property PACKAGE_PIN J20 [get_ports adcTxTrig]
 set_property PACKAGE_PIN K21 [get_ports adcReset]
+set_property PACKAGE_PIN N22 [get_ports adcPdnFast]
+set_property PACKAGE_PIN N20 [get_ports adcPdnGlb]
 #set_property PACKAGE_PIN K21 [get_ports adcReset] #RESET
 set_property IOSTANDARD LVCMOS18 [get_ports adcTxTrig]
 set_property IOSTANDARD LVCMOS18 [get_ports adcReset]
+set_property IOSTANDARD LVCMOS18 [get_ports adcPdnFast]
+set_property IOSTANDARD LVCMOS18 [get_ports adcPdnGlb]
 #############################################################
 
 
