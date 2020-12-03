@@ -211,6 +211,7 @@ begin
             v.validCount := (others => '0');
             v.waitCount  := (others => '0');
             v.bitCount   := (others => '0');
+            -- Registers request
             if RegReq = '1' then
                v.regData    := regData;
                if regMode = '0' then
@@ -219,7 +220,7 @@ begin
                   v.addr    := WRITE_ADDR_C;
                end if;
                v.state      := LOAD_CONFIG_S;
-               --v.drsBusy     := '1';
+            -- Readout request received
             elsif readoutReq = '1' then
                if nSamples > x"400" then 
                   v.fullWF   := '1';
@@ -415,13 +416,13 @@ begin
                   v.state    := WAIT_DONE_DATA_S;
                end if;
 
-               if r.stopSmpValid = '0' then 
-                  if (r.bitCount = 9) then
-                     v.bitCount := (others => '0');
-                     v.state := DATA_RSR_S; 
-                     v.stopSmpValid := '1';
-                  end if;
-               end if;
+               --if r.stopSmpValid = '0' then 
+                  --if (r.bitCount = 9) then
+                     --v.bitCount := (others => '0');
+                     --v.state := DATA_RSR_S; 
+                     --v.stopSmpValid := '1';
+                  --end if;
+               --end if;
             end if;      
 
             if r.stopSmpValid = '1' then
@@ -489,6 +490,7 @@ begin
                v.state    := DATA_RD_FULL_S;
             end if;      
             v.validCount:= (others => '0');
+            v.stopSmpValid := '1';
 
          -- Full waveform readout
          when DATA_RD_FULL_S => 

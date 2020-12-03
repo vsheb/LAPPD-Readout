@@ -252,7 +252,7 @@ begin
   
   U_SpiDAC : entity work.SpiDACx0508
      generic map (
-      N_CHAINED => 2
+      N_CHAINED => 1
      )
      port map (
        -- Clock and reset
@@ -270,7 +270,7 @@ begin
        dacReq    => SpiDAC_regReq, -- in  sl;
        dacAck    => SpiDAC_regAck, -- out sl;
        -- Based on our convention, we grab the middle nibble 
-       dacAddr   => regAddr(5 downto 2), -- in  slv( 3 downto 0);
+       dacAddr   => regAddr(6 downto 2), -- in  slv( 3 downto 0);
 
        -- Shadow register output
        dacShadow => open -- out Word16Array(15 downto 0)

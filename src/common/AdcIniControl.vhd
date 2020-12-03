@@ -122,10 +122,10 @@ begin
       C  => sysClk,
       CE => '1',
       R  => '0',
-      D  => adcTxTrigR
+      D  => iAdcTxTrig
    );
    --adcTxTrig <= adcTxTrigRR;
-   adcTxTrig <= adcTxTrigR;
+   --adcTxTrig <= adcTxTrigR;
 
    process (sysClk)
    begin

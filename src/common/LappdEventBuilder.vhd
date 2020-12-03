@@ -32,7 +32,7 @@ entity LappdEventBuilder is
       drsStopSample     : Word10Array(0 to 7);
       drsWaitStart      : in slv16 := (others => '0');
 
-      -- enable buffer read from here, desable reading via reg interface
+      -- enable buffer read from here, disable reading via reg interface
       rdEnable          : out sl;
       -- addres in the waveform buffer
       rdAddr            : out slv(ADC_DATA_DEPTH-1 downto 0);

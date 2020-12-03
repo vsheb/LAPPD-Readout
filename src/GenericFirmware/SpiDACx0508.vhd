@@ -17,7 +17,7 @@ entity SpiDACx0508 is
    generic (
       SCLK_HALF_PERIOD_G : integer := 5;
       GATE_DELAY_G       : time    := 1 ns;
-      N_CHAINED          : integer := 1
+      N_CHAINED          : integer := 1 -- total number of chips - 1 (max 1 for now)
    );
    port(
       -- Clock and reset
@@ -32,7 +32,7 @@ entity SpiDACx0508 is
       dacOp     : in  sl;
       dacReq    : in  sl;
       dacAck    : out sl;
-      dacAddr   : in  slv( 3 downto 0);
+      dacAddr   : in  slv( 4 downto 0); -- MSB for DAC number
       dacWrData : in  slv(15 downto 0);
       dacRdData : out slv(15 downto 0);
       -- Shadow register output
@@ -49,8 +49,10 @@ architecture Behavioral of SpiDACx0508 is
       rdData      : slv(15 downto 0);
       bitCount    : slv(5 downto 0);
       holdCount   : slv(7 downto 0);
-      dataOut     : slv(23 downto 0);
-      chipCount   : slv(3 downto 0);
+      dataOut     : slv(23 downto 0); -- actual data out (requested or NOP)
+      data        : slv(23 downto 0); -- requested data
+      chipNum     : slv(0 downto 0); -- change the range for more chips
+      chipCount   : slv(0 downto 0);
       op          : sl;
       ack         : sl;
       csb         : sl;
@@ -66,6 +68,8 @@ architecture Behavioral of SpiDACx0508 is
       holdCount   => (others => '0'),
       chipCount   => (others => '0'),
       dataOut     => (others => '0'),
+      data        => (others => '0'),
+      chipNum     => (others => '0'),
       op          => '0',
       ack         => '0',
       csb         => '1',
@@ -76,6 +80,8 @@ architecture Behavioral of SpiDACx0508 is
 
    signal r   : RegType := REG_INIT_C;
    signal rin : RegType;
+
+   constant DAC_NOP_C : slv(23 downto 0) := (23 => '1', others => '0');
 
 begin
 
@@ -104,13 +110,16 @@ begin
                v.csb     := '0';
                v.sclk    := '1';
                v.op      := dacOp;
-               v.dataOut := not(dacOp) & "000" & dacAddr & dacWrData;
+
+               v.data    := not(dacOp) & "000" & dacAddr(3 downto 0) & dacWrData;
+               if dacAddr(4) = '0' then
+                  v.dataOut := v.data;
+               else 
+                  -- NOP
+                  v.dataOut := DAC_NOP_C;
+               end if;
                v.state   := DATA_OUT_S;
---               if dacOp = '1' then
---                  v.state := DATA_OUT_S;
---               else
---                  v.state := DONE_S;
---               end if; 
+
                v.chipCount := r.chipCount + 1;
             end if;
          when DATA_OUT_S  =>
@@ -154,6 +163,11 @@ begin
                   v.holdCount := (others => '0');
                   v.chipCount := r.chipCount + 1;
                   v.state     := DATA_OUT_S; 
+                  if v.chipCount = r.chipNum then
+                     v.dataOut := r.data;
+                  else
+                     v.dataOut := DAC_NOP_C;
+                  end if;
                end if;
             end if;            
          when DONE_S =>
