@@ -44,7 +44,7 @@ architecture Behavioral of AdcIniControl is
    signal txTrgCnt            : std_logic_vector(1 downto 0)  := (others => '0');
    signal localAdcReset       : std_logic := '0';
    signal adcResetCnt         : std_logic_vector(4 downto 0)  := (others => '0');
-   signal adcSyncCnt          : std_logic_vector(1 downto 0) := (others => '0');
+   signal adcSyncCnt          : std_logic_vector(2 downto 0) := (others => '0');
 
    signal bufRCE_i            : std_logic := '1';
    signal bufRCLR_i           : std_logic := '0';
@@ -136,7 +136,7 @@ begin
          else
             adcSyncCnt <= adcSyncCnt + 1;
          end if;
-         if adcSyncCnt = b"11" then
+         if adcSyncCnt = b"111" then
             adcSync <= '1';
          else
             adcSync <= '0';

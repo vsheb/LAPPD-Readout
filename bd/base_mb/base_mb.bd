@@ -984,6 +984,12 @@
             <spirit:fileSetRef>
               <spirit:localName>sim_1</spirit:localName>
             </spirit:fileSetRef>
+            <spirit:fileSetRef>
+              <spirit:localName>sources_1</spirit:localName>
+            </spirit:fileSetRef>
+            <spirit:fileSetRef>
+              <spirit:localName>sim_1</spirit:localName>
+            </spirit:fileSetRef>
           </spirit:fileSetRefGroup>
         </spirit:executableImage>
         <spirit:segments>
@@ -1016,7 +1022,7 @@
             <spirit:name>SEG_ilmb_bram_if_cntlr_Mem</spirit:name>
             <spirit:displayName>/microblaze_0_local_memory/ilmb_bram_if_cntlr/SLMB/Mem</spirit:displayName>
             <spirit:addressOffset>0x00000000</spirit:addressOffset>
-            <spirit:range>64K</spirit:range>
+            <spirit:range>8K</spirit:range>
           </spirit:segment>
         </spirit:segments>
       </spirit:addressSpace>

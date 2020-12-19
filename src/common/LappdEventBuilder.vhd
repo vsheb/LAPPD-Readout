@@ -479,7 +479,7 @@ begin
                r_nxt.drsOffset10 <= r_cur.drsStopSample + 
                                       std_logic_vector(to_unsigned(r_cur.iFragment*r_cur.nSamplInPacket, 10));
                r_nxt.nSamplInPacket <= r_cur.nSamples - r_cur.iWordCnt; 
-               r_nxt.rdAddr      <= r_cur.rdAddr    - 1; -- FIXME
+               r_nxt.rdAddr      <= r_cur.rdAddr    - 2; -- FIXME
                r_nxt.state       <= INI_HIT_HDR_S;
                r_nxt.iWordCnt  <= 0;
             end if;

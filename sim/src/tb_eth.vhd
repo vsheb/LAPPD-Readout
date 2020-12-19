@@ -141,8 +141,8 @@ begin
          udpNumOfPorts     => x"0004",
    
 
-         nSamples          => X"0008",
-         nSamplInPacket    => x"0200", --x"0200", --X"0004",
+         nSamples          => X"0010", --X"0008",
+         nSamplInPacket    => x"0008", --x"0200", --X"0004",
          drsWaitStart      => x"0000",
 
          adcConvClk        => '0',
@@ -303,7 +303,19 @@ begin
       wrData(0) <= std_logic_vector(to_unsigned(8,12));
       wrData(1) <= std_logic_vector(to_unsigned(1,12));
       wait until clk = '1';
-      
+      wrData(0) <= std_logic_vector(to_unsigned(9,12));
+      wrData(1) <= std_logic_vector(to_unsigned(8,12));
+      wait until clk = '1';
+      wrData(0) <= std_logic_vector(to_unsigned(10,12));
+      wrData(1) <= std_logic_vector(to_unsigned(7,12));
+      wait until clk = '1';
+      wrData(0) <= std_logic_vector(to_unsigned(11,12));
+      wrData(1) <= std_logic_vector(to_unsigned(6,12));
+      wait until clk = '1';
+      wrData(0) <= std_logic_vector(to_unsigned(12,12));
+      wrData(1) <= std_logic_vector(to_unsigned(5,12));
+      wait until clk = '1';
+                        
       wrEna <= '0';
 
       wait for 500 ns;

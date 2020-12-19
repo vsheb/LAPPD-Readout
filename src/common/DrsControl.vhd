@@ -62,7 +62,7 @@ entity DrsControl is
       stopSample    : out Word10Array(0 to NCHIPS-1);
       stopSmpValid  : out sl;
 
-      validDelay    : in  slv(5 downto 0) := (others => '0');
+      validDelay    : in  slv(7 downto 0) := (others => '0');
       sampleValid   : out sl;
 
       -- modes
@@ -117,8 +117,9 @@ architecture Behavioral of DrsControl is
       sampleValid  : sl;
       waitCount    : slv(15 downto 0);
       validPhase   : slv(5 downto 0);
-      validCount   : slv(7 downto 0);
+      validCount   : slv(8 downto 0);
       bitCount     : slv(9 downto 0);
+      validDelay   : slv(7 downto 0);
       drsBusy      : sl;
    end record RegType;
    
@@ -142,6 +143,7 @@ architecture Behavioral of DrsControl is
       validPhase   => (others => '0'),
       validCount   => (others => '0'),
       bitCount     => (others => '0'),
+      validDelay   => (others => '0'),
       drsBusy      => '0'
    );
 
@@ -151,7 +153,7 @@ architecture Behavioral of DrsControl is
    signal iRefClk          : sl;
    signal iSrClk           : sl;
 
-   signal sampleValidQ : slv(63 downto 0);
+   signal sampleValidQ : slv(127 downto 0);
 
    constant TRANSP_ADDR_C  : slv(3 downto 0) := "1010";
    constant RDSHIFT_ADDR_C : slv(3 downto 0) := "1011";
@@ -195,6 +197,7 @@ begin
             v.drsBusy      := '0';
 
             v.stopSmpValid := '0';
+            v.validDelay   := validDelay;
 
 
             if DEnable = '1' then
@@ -211,7 +214,6 @@ begin
             v.validCount := (others => '0');
             v.waitCount  := (others => '0');
             v.bitCount   := (others => '0');
-            -- Registers request
             if RegReq = '1' then
                v.regData    := regData;
                if regMode = '0' then
@@ -220,7 +222,7 @@ begin
                   v.addr    := WRITE_ADDR_C;
                end if;
                v.state      := LOAD_CONFIG_S;
-            -- Readout request received
+               --v.drsBusy     := '1';
             elsif readoutReq = '1' then
                if nSamples > x"400" then 
                   v.fullWF   := '1';
@@ -347,6 +349,7 @@ begin
                v.waitCount := (others => '0');
                v.state     := DATA_RSR_NEXT_S;
             end if;            
+
          when DATA_RSR_NEXT_S =>   
             v.drsBusy   := '1';
             v.rsrLoad := '0';
@@ -388,7 +391,7 @@ begin
                if r.validPhase = b"111111" then
                   v.sampleValid := '1';
                else
-                  if r.validCount(7 downto 2) = r.validPhase then
+                  if r.validCount(8 downto 3) = r.validPhase then
                      v.sampleValid := '1';
                   else
                      v.sampleValid := '0';
@@ -416,20 +419,20 @@ begin
                   v.state    := WAIT_DONE_DATA_S;
                end if;
 
-               --if r.stopSmpValid = '0' then 
-                  --if (r.bitCount = 9) then
-                     --v.bitCount := (others => '0');
-                     --v.state := DATA_RSR_S; 
-                     --v.stopSmpValid := '1';
-                  --end if;
-               --end if;
+               if r.stopSmpValid = '0' then 
+                  if (r.bitCount = 9) then
+                     v.bitCount := (others => '0');
+                     v.state := ADC_SYNC_S; 
+                     v.stopSmpValid := '1';
+                  end if;
+               end if;
             end if;      
 
             if r.stopSmpValid = '1' then
                if r.validPhase = b"111111" then
                   v.sampleValid := '1';
                else
-                  if r.validCount(7 downto 2) = r.validPhase then
+                  if r.validCount(8 downto 2) = r.validPhase then
                      v.sampleValid := '1';
                   else
                      v.sampleValid := '0';
@@ -480,6 +483,7 @@ begin
             end if;      
 
          when WAIT_AFTER_ADDR_S => 
+            v.stopSmpValid := '1';
             v.addr      := READALL_ADDR_C;
             v.drsBusy   := '1';
             v.srClk       := '0';
@@ -490,7 +494,6 @@ begin
                v.state    := DATA_RD_FULL_S;
             end if;      
             v.validCount:= (others => '0');
-            v.stopSmpValid := '1';
 
          -- Full waveform readout
          when DATA_RD_FULL_S => 
@@ -505,7 +508,7 @@ begin
             if r.validPhase = b"111111" then
                v.sampleValid := '1';
             else
-               if r.validCount(7 downto 2) = r.validPhase then
+               if r.validCount(8 downto 3) = r.validPhase then
                   v.sampleValid := '1';
                else
                   v.sampleValid := '0';
@@ -525,7 +528,7 @@ begin
             if r.validPhase = b"111111" then
                v.sampleValid := '1';
             else
-               if r.validCount(7 downto 2) = r.validPhase then
+               if r.validCount(8 downto 2) = r.validPhase then
                   v.sampleValid := '1';
                else
                   v.sampleValid := '0';
@@ -683,10 +686,10 @@ begin
    process (sysClk)
    begin
       if rising_edge (sysClk) then
-         sampleValidQ <= sampleValidQ(62 downto 0) & rin.sampleValid;
+         sampleValidQ <= sampleValidQ(126 downto 0) & rin.sampleValid;
       end if;
    end process;
-   sampleValid <= sampleValidQ(to_integer(unsigned(validDelay)));
+   sampleValid <= sampleValidQ(to_integer(unsigned(rin.validDelay)));
 
 
 end Behavioral;

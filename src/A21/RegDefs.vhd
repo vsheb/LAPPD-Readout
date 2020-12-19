@@ -26,7 +26,7 @@ library work;
 package RegDefs is
 
    ----- FW VERSION -----------------------------------
-   constant FW_VERSION     : integer := 103;
+   constant FW_VERSION     : integer := 105;
    constant FW_VERSION_SLV : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(FW_VERSION, 32));
    ----------------------------------------------------
 

@@ -306,7 +306,7 @@ architecture Behavioral of A21 is
    alias a_adcDbgChan     : slv(5 downto 0)  is regArrCfg(getRegInd("ADCDEBUGCHAN"))(5 downto 0);
    alias a_nSamplInPacket : slv16  is regArrCfg(getRegInd("NSAMPLEPACKET"))(15 downto 0);
    alias a_drsValidPhase  : slv(5 downto 0)  is regArrCfg(getRegInd("DRSVALIDPHASE"))(5 downto 0);
-   alias a_drsValidDelay  : slv(5 downto 0)  is regArrCfg(getRegInd("DRSVALIDDELAY"))(5 downto 0);
+   alias a_drsValidDelay  : slv(7 downto 0)  is regArrCfg(getRegInd("DRSVALIDDELAY"))(7 downto 0);
    alias a_srClkCutOff    : slv16  is regArrCfg(getRegInd("SRCLKCUTOFF"));
    alias a_drsWaitAddr    : slv16  is regArrCfg(getRegInd("DRSWAITADDR"));
    alias a_drsWaitInit    : slv16  is regArrCfg(getRegInd("DRSWAITINIT"));

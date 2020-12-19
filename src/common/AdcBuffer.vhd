@@ -46,6 +46,8 @@ entity AdcBuffer is
       rdEthAddr     : in  slv(ADC_DATA_DEPTH-1 downto 0);
       rdEthData     : out slv16; --(ADC_DATA_WIDTH-1 downto 0);
       
+      adcBufReady   : out sl;
+      
       -- reg interface 
       rdReq         : in  sl;
       rdChan        : in  slv(5 downto 0);
@@ -139,10 +141,7 @@ begin
                pedSmpNumArr_i <= (others => (others => '0'));
                if drsStopSmpValid = '1' then
                   for i in 0 to 7 loop
-                     pedSmpNumArr_i(i) <= (others => '0'); --drsStopSampleArr(i);
-                     --for j in 0 to 7 loop
-                        --pedSmpNumArr_i(i*8+j) <= drsStopSampleArr(i);
-                     --end loop;
+                     pedSmpNumArr_i(i) <= drsStopSampleArr(i);
                   end loop;
                   pedState <= NEXT_SAMPLE_S;
                end if;
@@ -232,7 +231,9 @@ begin
          end if;
       end process;
 
+      ---------------------------------------------------
       -- generate BRAM instances
+      ---------------------------------------------------
       U_Mem : entity work.bram_sdp 
          generic map (
             DATA  => 16*ADC_CHANNELS_NUMBER, --ADC_DATA_WIDTH * ADC_CHANNELS_NUMBER,
@@ -248,6 +249,7 @@ begin
             addrb => rdAddr_i,
             doutb => localRdData(iAdc)
          );
+      ---------------------------------------------------
 
       -- manage write address
       process(sysClk)
