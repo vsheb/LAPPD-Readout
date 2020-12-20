@@ -987,9 +987,6 @@
             <spirit:fileSetRef>
               <spirit:localName>sources_1</spirit:localName>
             </spirit:fileSetRef>
-            <spirit:fileSetRef>
-              <spirit:localName>sim_1</spirit:localName>
-            </spirit:fileSetRef>
           </spirit:fileSetRefGroup>
         </spirit:executableImage>
         <spirit:segments>
