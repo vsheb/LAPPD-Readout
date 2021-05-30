@@ -14,7 +14,7 @@ library work;
    use work.GigabitEthPkg.all;
    use work.RegDefs.all;
 
-entity A21 is
+entity A22 is
    generic (
       REG_ADDR_BITS_G : integer := 16;
       REG_DATA_BITS_G : integer := 16;
@@ -92,9 +92,9 @@ entity A21 is
       --rs232_uart_rxd : in sl;
       --rs232_uart_txd : out sl
    );
-end A21;
+end A22;
 
-architecture Behavioral of A21 is
+architecture Behavioral of A22 is
 
    -- clocks
    signal ethClk62          : sl;
