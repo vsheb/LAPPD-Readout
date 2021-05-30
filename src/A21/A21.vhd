@@ -78,7 +78,9 @@ entity A21 is
       adcSclk   : out sl; --v(G_N_ADC_CHIPS-1 downto 0);
       adcCsb    : out slv(G_N_ADC_CHIPS-1 downto 0);
       adcSin    : out sl;
-      adcSout   : in  slv(G_N_ADC_CHIPS-1 downto 0)
+      adcSout   : in  slv(G_N_ADC_CHIPS-1 downto 0);
+
+      rfSwitch  : out sl
 
       -- These are not required for the A.20 Ultralytics board]
       -- They are requred by the Artix-7 Eval board.
@@ -174,7 +176,6 @@ architecture Behavioral of A21 is
    signal pedSmpNumArr         : Word10Array(0 to 7);
    signal pedArr               : AdcDataArray(0 to 63) := (others => (others => '0'));
    signal pedRegReq            : sl               := '0';
-   signal pedRegChan           : slv(5 downto 0)  := (others => '0');
    signal pedRegAddr16         : slv16            := (others => '0');
    signal pedRegAck            : sl               := '0';
    signal pedRegWrEn           : sl               := '0';
@@ -197,8 +198,6 @@ architecture Behavioral of A21 is
    signal adcBufRdAddr         : slv(G_ADC_BIT_DEPTH-1 downto 0);
    signal adcBufCurAddr        : slv(G_ADC_BIT_DEPTH-1 downto 0);
    signal adcBufEthEna         : sl := '0';
-   signal adcBufEthAddrInc     : sl := '0';
-   signal adcBufEthAddrRst     : sl := '0';
    signal adcBufEthAddr        : slv(G_ADC_BIT_DEPTH-1 downto 0)           := (others => '0');
    --signal adcBufEthData        : slv(G_ADC_BIT_WIDTH-1 downto 0);
    signal adcBufEthData        : slv16;
@@ -223,17 +222,12 @@ architecture Behavioral of A21 is
    signal drsRegAck            : sl;
                                
    -- drs4 readout signals     
-   signal drsRdStart           : sl := '0';
-   signal drsRdStartQ          : sl := '0';
-   signal drsRdreq             : sl;
+   signal drsRdReq             : sl;
    signal drsRdAck             : sl;
-   signal drsNsamples          : slv(9 downto 0);
    signal drsStopSampleArr     : Word10Array(0 to G_N_DRS-1);
    signal drsStopSampleValid   : sl;
    signal drsSampleValid       : sl; 
-   signal drsSampleValidQ      : slv(63 downto 0);
    signal drsCtrlBusy          : sl;
-   signal drsCtrlDone          : sl;
    ----------------------------------------------
 
    ----------------------------------------------
@@ -342,7 +336,8 @@ begin
    ethSync  <= ethRxLinkSync;
    ethReady <= ethAutoNegDone;
 
-   tca_Cntl  <= regArrCfg(getRegInd("MODE"))(C_MODE_TCA_ENA_BIT);
+   tca_Cntl   <= regArrCfg(getRegInd("MODE"))(C_MODE_TCA_ENA_BIT);
+   rfSwitch   <= regArrCfg(getRegInd("MODE"))(C_MODE_RFSWITCH_BIT);
 
    extTrigInDir <= '0';
 
