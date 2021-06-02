@@ -392,14 +392,10 @@ begin
             end if;
 
             if r.stopSmpValid = '1' then
-               if r.validPhase = b"111111" then
+               if r.validCount(8 downto 3) = r.validPhase then
                   v.sampleValid := '1';
                else
-                  if r.validCount(8 downto 3) = r.validPhase then
-                     v.sampleValid := '1';
-                  else
-                     v.sampleValid := '0';
-                  end if;
+                  v.sampleValid := '0';
                end if;
             end if;
             v.validCount := r.validCount + 1;
@@ -433,14 +429,10 @@ begin
             end if;      
 
             if r.stopSmpValid = '1' then
-               if r.validPhase = b"111111" then
+               if r.validCount(8 downto 3) = r.validPhase then
                   v.sampleValid := '1';
                else
-                  if r.validCount(8 downto 2) = r.validPhase then
-                     v.sampleValid := '1';
-                  else
-                     v.sampleValid := '0';
-                  end if;
+                  v.sampleValid := '0';
                end if;
             end if;
 
@@ -509,15 +501,12 @@ begin
                v.srClk       := '0';
             end if;
 
-            if r.validPhase = b"111111" then
+            if r.validCount(8 downto 3) = r.validPhase then
                v.sampleValid := '1';
             else
-               if r.validCount(8 downto 3) = r.validPhase then
-                  v.sampleValid := '1';
-               else
-                  v.sampleValid := '0';
-               end if;
+               v.sampleValid := '0';
             end if;
+
             v.validCount := r.validCount + 1;
             if r.waitCount < SR_CLOCK_HALF_PERIOD_G-1 then
                v.waitCount := r.waitCount + 1;
@@ -529,14 +518,11 @@ begin
 
          when NEXT_DATA_RD_FULL_S => 
             v.drsBusy   := '1';
-            if r.validPhase = b"111111" then
+
+            if r.validCount(8 downto 3) = r.validPhase then
                v.sampleValid := '1';
             else
-               if r.validCount(8 downto 2) = r.validPhase then
-                  v.sampleValid := '1';
-               else
-                  v.sampleValid := '0';
-               end if;
+               v.sampleValid := '0';
             end if;
             --v.sampleValid := '1';
             v.srClk       := '0';
