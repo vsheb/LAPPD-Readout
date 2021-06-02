@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.std_logic_unsigned.all;
 
 library work;
 use work.UtilityPkg.all;
@@ -117,7 +116,6 @@ architecture adcBufArch of AdcBuffer is
 
    type     SignedArrayType     is array(integer range<>) of signed(ADC_DATA_WIDTH-1 downto 0);
    signal   minAdcArr         : SignedArrayType(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
-   --signal   maxAdcArr         : SignedArrayType(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
 
 
    ----------------------------------------------
@@ -153,12 +151,12 @@ begin
                --if dataValid(0) = '1' and wrEnable = '1' then -- FIXME: AND of dataValid
                if wrEnable_r(0) = '1' then 
                   for i in 0 to 3 loop
-                        pedSmpNumArr_i(i) <= pedSmpNumArr_i(i) + 1;
+                        pedSmpNumArr_i(i) <= std_logic_vector(unsigned(pedSmpNumArr_i(i)) + 1);
                   end loop;
                end if;
                if wrEnable_r(1) = '1' then 
                   for i in 4 to 7 loop
-                        pedSmpNumArr_i(i) <= pedSmpNumArr_i(i) + 1;
+                        pedSmpNumArr_i(i) <= std_logic_vector(unsigned(pedSmpNumArr_i(i)) + 1);
                   end loop;
                end if;
                pedArr_r <= pedArr;
@@ -258,7 +256,7 @@ begin
             if rstWrAddr = '1' then
                bufCurAddr(iAdc) <= (others => '0');
             elsif wrEnable_2r(iAdc) = '1' then 
-               bufCurAddr(iAdc) <= bufCurAddr(iAdc) + '1';
+               bufCurAddr(iAdc) <= std_logic_vector(unsigned(bufCurAddr(iAdc)) + 1);
             end if;
          end if;
       end process;
@@ -291,7 +289,7 @@ begin
 
    process(rdChan_i, rdAdc, rdAdcChan_i)
    begin
-      if rdChan_i < 32 then
+      if to_integer(unsigned(rdChan_i)) < 32 then
          rdAdc <= 0;
          rdAdcChan_i <= to_integer(unsigned(rdChan_i));
       else
@@ -321,7 +319,7 @@ begin
          if rdAddr(7 downto 0) = x"01" then
             rdAddr_regIfc <= (others => '0');
          elsif rdReqR = '1' and rdReqRR = '0' then
-            rdAddr_regIfc <= rdAddr_regIfc + 1; 
+            rdAddr_regIfc <= std_logic_vector(unsigned(rdAddr_regIfc) + 1); 
          end if;
          curAddr    <= bufCurAddr(0);
       end if;

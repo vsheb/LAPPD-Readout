@@ -32,22 +32,24 @@ entity SpiDACx0508 is
       dacOp     : in  sl;
       dacReq    : in  sl;
       dacAck    : out sl;
-      dacAddr   : in  slv( 4 downto 0); -- MSB for DAC number
+      dacAddr   : in  slv( 5 downto 0); -- MSB for DAC number
       dacWrData : in  slv(15 downto 0);
-      dacRdData : out slv(15 downto 0);
+      dacRdData : out slv(31 downto 0);
       -- Shadow register output
-      dacShadow : out Word16Array(15 downto 0)
+      --dacShadow : out Word16Array(31 downto 0)
+      dacShadow : out slv(31 downto 0)
    ); 
 end SpiDACx0508;
 
 architecture Behavioral of SpiDACx0508 is
 
-   type StateType     is (IDLE_S,DATA_OUT_S,SHIFT_BIT_S,LAST_BIT_S,DONE_S);
+   type StateType     is (IDLE_S,DATA_OUT_S,SHIFT_BIT_S,LAST_BIT_S,READ_SHADOW_S,DONE_S);
    
    type RegType is record
       state       : StateType;
-      rdData      : slv(15 downto 0);
+      rdData      : slv(31 downto 0);
       bitCount    : slv(5 downto 0);
+      bitCntChain : slv(31 downto 0);
       holdCount   : slv(7 downto 0);
       dataOut     : slv(23 downto 0); -- actual data out (requested or NOP)
       data        : slv(23 downto 0); -- requested data
@@ -58,13 +60,15 @@ architecture Behavioral of SpiDACx0508 is
       csb         : sl;
       sin         : sl;
       sclk        : sl;
-      shadowReg   : Word16Array(15 downto 0);
+      --shadowReg   : Word16Array(31 downto 0);
+      shadowReg   : slv(31 downto 0);
    end record RegType;
    
    constant REG_INIT_C : RegType := (
       state       => IDLE_S,
       rdData      => (others => '0'),
       bitCount    => (others => '0'),
+      bitCntChain => (others => '0'),
       holdCount   => (others => '0'),
       chipCount   => (others => '0'),
       dataOut     => (others => '0'),
@@ -75,13 +79,14 @@ architecture Behavioral of SpiDACx0508 is
       csb         => '1',
       sin         => '0',
       sclk        => '1',
-      shadowReg   => (others => (others => '0'))
+      shadowReg   => (others => '0')
+      --shadowReg   => (others => (others => '0'))
    );
 
    signal r   : RegType := REG_INIT_C;
    signal rin : RegType;
 
-   constant DAC_NOP_C : slv(23 downto 0) := (23 => '1', others => '0');
+   constant DAC_NOP_C : slv(23 downto 0) := (others => '0');
 
 begin
 
@@ -107,21 +112,30 @@ begin
             v.chipCount := (others => '0');
             -- We have a request, drop CSB, prep the data out
             if dacReq = '1' then
-               v.csb     := '0';
-               v.sclk    := '1';
-               v.op      := dacOp;
-
-               v.data    := not(dacOp) & "000" & dacAddr(3 downto 0) & dacWrData;
-               if dacAddr(4) = '0' then
-                  v.dataOut := v.data;
-               else 
-                  -- NOP
-                  v.dataOut := DAC_NOP_C;
+               if dacAddr(5) = '1' and dacOp = '0' then
+                  v.state := READ_SHADOW_S;
+               else
+                  v.csb     := '0';
+                  v.op      := dacOp;
+                  v.data    := not(dacOp) & "000" & dacAddr(3 downto 0) & dacWrData;
+                  if dacAddr(4) = '1' then
+                     v.dataOut := v.data;
+                  else 
+                     -- NOP
+                     v.dataOut := DAC_NOP_C;
+                  end if;
+                  v.state   := DATA_OUT_S;
                end if;
-               v.state   := DATA_OUT_S;
 
-               v.chipCount := r.chipCount + 1;
             end if;
+         when READ_SHADOW_S => 
+            v.ack := '1';
+            v.rdData := r.shadowReg;
+            if dacReq = '0' then
+               v.ack   := '0';
+               v.state := IDLE_S;
+            end if;
+
          when DATA_OUT_S  =>
             v.sclk := '1';
             -- We always write out 24 bits, RW, then "000", then A3-A0, then D15-D0
@@ -134,6 +148,7 @@ begin
             if (r.holdCount < SCLK_HALF_PERIOD_G) then
                v.holdCount := r.holdCount + 1;
             else
+               v.shadowReg := r.shadowReg(30 downto 0) & dacSout;
                v.state     := SHIFT_BIT_S;
                v.holdCount := (others => '0');
             end if;
@@ -147,7 +162,19 @@ begin
                   v.bitCount := r.bitCount + 1;
                   v.state    := DATA_OUT_S;
                else
-                  v.state    := LAST_BIT_S;
+                  if r.chipCount = N_CHAINED then
+                     v.state    := LAST_BIT_S;
+                  else
+                     v.bitCount  := (others => '0');
+                     v.holdCount := (others => '0');
+                     v.chipCount := r.chipCount + 1;
+                     v.state     := DATA_OUT_S; 
+                     if dacAddr(4) = '1' then
+                        v.dataOut := DAC_NOP_C;
+                     else
+                        v.dataOut := r.data;
+                     end if;
+                  end if;
                end if;
             end if;
          when LAST_BIT_S =>
@@ -156,28 +183,16 @@ begin
             if (r.holdCount < SCLK_HALF_PERIOD_G) then
                v.holdCount := r.holdCount + 1;
             else
-               if r.chipCount = N_CHAINED then
-                  v.state := DONE_S; 
-               else
-                  v.bitCount  := (others => '0');
-                  v.holdCount := (others => '0');
-                  v.chipCount := r.chipCount + 1;
-                  v.state     := DATA_OUT_S; 
-                  if v.chipCount = r.chipNum then
-                     v.dataOut := r.data;
-                  else
-                     v.dataOut := DAC_NOP_C;
-                  end if;
-               end if;
+               v.state := DONE_S; 
             end if;            
          when DONE_S =>
             v.ack  := '1';
             v.csb  := '1';
-            if r.op = '1' then
-               v.shadowReg(conv_integer(dacAddr)) := dacWrData;
+            --if r.op = '1' then
+               --v.shadowReg(conv_integer(dacAddr)) := dacWrData;
 --            else
 --               v.rdData := r.shadowReg(conv_integer(dacAddr));
-            end if;
+            --end if;
             if dacReq = '0' then
                v.ack   := '0';
                v.state := IDLE_S;

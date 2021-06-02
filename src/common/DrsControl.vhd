@@ -57,7 +57,6 @@ entity DrsControl is
       validPhase    : in  slv(5 downto 0);
       srClkCutOff   : in  slv(15 downto 0) := (others => '1');
       waitAfterAddr : in  slv(15 downto 0) := (others => '0');  
-      waitBeforeIni : in  slv(15 downto 0) := (others => '0');
 
       stopSample    : out Word10Array(0 to NCHIPS-1);
       stopSmpValid  : out sl;
@@ -66,7 +65,8 @@ entity DrsControl is
       sampleValid   : out sl;
 
       -- modes
-      transModeOn   : in  sl;
+      idleMode      : in  slv(1 downto 0);
+      --transModeOn   : in  sl;
       DEnable       : in  sl;
       
       -- DRS4 address & serial interfacing
@@ -169,7 +169,7 @@ architecture Behavioral of DrsControl is
 begin
 
    comb : process( r, sysRst, regData, regReq, readoutReq, nSamples, DEnable, drsSrOut, phaseAdcSrClk, 
-                   validPhase, srClkCutOff, waitBeforeIni, waitAfterAddr, transModeOn, regMode, adcSync) is
+                   validPhase, srClkCutOff, waitAfterAddr, idleMode, regMode, adcSync, validDelay) is
       variable v : RegType;
    begin
       v := r;
@@ -182,12 +182,16 @@ begin
       -- State machine 
       case(r.state) is 
          when IDLE_S =>
-            if transModeOn = '1' then 
-               v.addr      := TRANSP_ADDR_C;
-            else
-               --v.addr      := RDSHIFT_ADDR_C;
+            if idleMode = b"00" then
+               v.addr      := STANDBY_ADDR_C;
+            elsif idleMode = b"01" then
                v.addr      := READALL_ADDR_C;
-               --v.addr      := STANDBY_ADDR_C;
+            elsif idleMode  = b"10" then 
+               v.addr      := TRANSP_ADDR_C;
+            elsif idleMode = b"11" then
+               v.addr      := RDSHIFT_ADDR_C;
+            else
+               v.addr      := STANDBY_ADDR_C;
             end if;
             v.srClk        := '0';
             v.srIn         := '0';

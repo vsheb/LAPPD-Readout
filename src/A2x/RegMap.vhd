@@ -80,7 +80,7 @@ architecture Behavioral of RegMap is
   signal SpiDAC_regAck : sl;
 
   -- This is private to avoid garbage read out while servicing other requests
-  signal SpiDAC_regRdData : slv(15 downto 0);
+  signal SpiDAC_regRdData : slv(31 downto 0);
 
   -- These signals don't need to be private because they don't cause the DAC to
   -- act. 
@@ -190,7 +190,7 @@ begin
         -- The low 4 bits are not available (we increment registers by x0008)
         -- So grab the middle 4 bits, which give us all 16 channels, easily
         -- read in the register address itself
-        regRdData <= x"0000" & SpiDAC_regRdData;
+        regRdData <= SpiDAC_regRdData;
         SpiDAC_regReq <= regReq_r;      
         regAck        <= SpiDAC_regAck;
       ----------------------------------------------------
@@ -270,7 +270,7 @@ begin
        dacReq    => SpiDAC_regReq, -- in  sl;
        dacAck    => SpiDAC_regAck, -- out sl;
        -- Based on our convention, we grab the middle nibble 
-       dacAddr   => regAddr(6 downto 2), -- in  slv( 3 downto 0);
+       dacAddr   => regAddr(7 downto 2), -- in  slv( 4 downto 0);
 
        -- Shadow register output
        dacShadow => open -- out Word16Array(15 downto 0)

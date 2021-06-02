@@ -271,7 +271,6 @@ architecture Behavioral of A22 is
    -- aliases for easy access to the configuration registers
    ----------------------------------------------
    -- MODE register
-   alias a_modeDrsTrans : sl is regArrCfg(getRegInd("MODE"))(C_MODE_DRS_TRANS_BIT); 
    alias a_modeAdcBufEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADCBUF_WREN_BIT);
    alias a_modeExtTrgEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_EXTTRG_EN_BIT);
    alias a_modeUseClkIn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_CLKIN_TRG_BIT);
@@ -296,6 +295,7 @@ architecture Behavioral of A22 is
    alias a_ebFragDisable  : sl    is regArrCfg(getRegInd("MODE"))(C_MODE_EB_FRDISABLE_BIT);
    alias a_drsStopReverse : sl    is regArrCfg(getRegInd("MODE"))(C_MODE_DRS_REVRS_BIT);
 
+   alias a_drsIdleMode    : slv(1 downto 0) is regArrCfg(getRegInd("DRSIDLEMODE"))(1 downto 0); 
 
    alias a_adcDbgChan     : slv(5 downto 0)  is regArrCfg(getRegInd("ADCDEBUGCHAN"))(5 downto 0);
    alias a_nSamplInPacket : slv16  is regArrCfg(getRegInd("NSAMPLEPACKET"))(15 downto 0);
@@ -560,9 +560,9 @@ begin
       validPhase    => a_drsValidPhase,
       srClkCutOff   => a_srClkCutOff, -- debug FIXME remove
       waitAfterAddr => a_drsWaitAddr, -- debug FIXME remove
-      waitBeforeIni => a_drsWaitInit, -- debug FIXME remove
+      --waitBeforeIni => a_drsWaitInit, -- debug FIXME remove
       
-      transModeOn   => a_modeDrsTrans,
+      idleMode      => a_drsIdleMode,
       DEnable       => a_drsDEnable,
       
       -- DRS4 address & serial interfacing

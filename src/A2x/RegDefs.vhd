@@ -26,7 +26,7 @@ library work;
 package RegDefs is
 
    ----- FW VERSION -----------------------------------
-   constant FW_VERSION     : integer := 106;
+   constant FW_VERSION     : integer := 107;
    constant FW_VERSION_SLV : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(FW_VERSION, 32));
    ----------------------------------------------------
 
@@ -108,6 +108,7 @@ package RegDefs is
     ( "ADCDATADELAY    ",  X"0400", X"0000_000E", B"01",32),
     ( "ADCDELAYDEBUG   ",  X"0500", X"0000_0000", B"10",36), --(16+2)*2
     ( "DRSADCPHASE     ",  X"0600", X"0000_0002", B"01",1),
+    ( "DRSIDLEMODE     ",  X"0608", X"0000_0000", B"01",1),
     ( "NSAMPLEPACKET   ",  X"0610", X"0000_0200", B"01",1),
     ( "DRSVALIDPHASE   ",  X"0618", X"0000_0000", B"01",1),
     ( "DRSVALIDDELAY   ",  X"0620", X"0000_001C", B"01",1),
