@@ -51,8 +51,10 @@ architecture Behavioral of tb_drs is
    signal stopSample    : Word10Array(0 downto 0) := (others => (others => '0'));
    signal sampleValid   : std_logic := '0';
 
+   signal adcSync       : std_logic := '0';
    signal adcConvClk    : std_logic := '0'; 
-   signal clkCnt        : std_logic_vector(1 downto 0) := (others => '0');
+   signal adcConvClkR   : std_logic := '0';
+   signal clkCnt        : std_logic_vector(2 downto 0) := (others => '0');
 
    signal drsRefClkP    : std_logic := '0';
    signal drsRefClkN    : std_logic := '0';
@@ -66,6 +68,9 @@ architecture Behavioral of tb_drs is
    signal drsDEnable    : std_logic;
    signal drsStopValid  : std_logic := '0';
 
+   signal TxCmd         : std_logic := '0';
+   signal TxTrig        : std_logic := '0';
+
 begin
 
    UUT : entity work.DrsControl 
@@ -77,7 +82,7 @@ begin
          sysClk        => clk, 
          sysRst        => '0', 
 
-         adcSync       => '1',
+         adcSync       => adcSync,
          dEnable       => '1',
          phaseAdcSrClk => (others => '0'),
          refClkRatio   => x"0000_0004",
@@ -94,10 +99,10 @@ begin
          stopSample    => stopSample,
          sampleValid   => sampleValid,
          validPhase    => std_logic_vector(to_unsigned(0,6)),
-         --waitAfterSrin => std_logic_vector(to_unsigned(0,16)),
+         waitAfterAddr => std_logic_vector(to_unsigned(16,16)),
          stopSmpValid  => drsStopValid,
 
-         transModeOn   => transModeOn,
+         idleMode      => b"01",
 
          -- DRS4 address & serial interfacing
          drsRefClkN    => drsRefClkN,
@@ -113,6 +118,21 @@ begin
          drsBusy       => drsBusy
       );
 
+   AdcIniControl_U : entity work.AdcIniControl
+      port map (
+         sysClk      => clk,
+         syncRst     => '0',
+
+         adcConvClk  => adcConvClk,
+
+         txTrigCmd   => TxCmd, 
+         adcResetCmd => '0', 
+
+         adcTxTrig   => TxTrig, 
+         adcReset    => open,
+         adcSync     => adcSync
+      );
+
    clk_proc : process                      
    begin                                     
       clk <= '0';                            
@@ -125,17 +145,24 @@ begin
    begin
       if rising_edge (clk) then
          clkCnt <= clkCnt + 1;
+         adcConvClkR   <= adcConvClk;
       end if;
    end process;
-   adcConvClk <= clkCnt(0);
+   adcConvClk <= clkCnt(1);
 
 
    stim : process
    begin
-      nSamples <= '0' & std_logic_vector(to_unsigned(10,11));
+      nSamples <= '0' & std_logic_vector(to_unsigned(1024,11));
       transModeOn <= '0';
       
-      wait for 1 us;
+      wait for 0.5 us;
+      wait until clk = '1';
+      TxCmd <= '1';
+      wait until clk = '1';
+      wait until clk = '1';
+      txCmd <= '0';
+      wait for 0.5 us;
 
       wait until clk = '1';
       readoutReq <= '1';

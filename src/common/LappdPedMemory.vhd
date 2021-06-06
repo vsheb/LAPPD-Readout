@@ -40,12 +40,10 @@ end entity LappdPedMemory;
 architecture behav of LappdPedMemory is
    --type AddrArrayType is array(0 to ADC_CHAN_NUMBER-1) of slv(ADC_DATA_DEPTH-1 downto 0);
    signal memWrEn      : slv(ADC_CHAN_NUMBER-1 downto 0)                     := (others => '0');
-   signal memWrAddr    : slv(ADC_DATA_DEPTH-1 downto 0)                      := (others => '0');
    signal memAddr      : slv(ADC_DATA_DEPTH-1 downto 0)                    := (others => '0');
    signal memAddrArr   : Word10Array(0 to ADC_CHAN_NUMBER-1); --AddrArrayType := (others => (others => '0'));
    --signal memWrData    : slv(ADC_DATA_WIDTH*ADC_CHAN_NUMBER-1 downto 0)    := (others => '0');
    signal memWrData    : slv(ADC_DATA_WIDTH-1 downto 0);
-   signal memRdData    : slv(ADC_DATA_WIDTH*ADC_CHAN_NUMBER-1 downto 0)    := (others => '0');
    signal memRdArr     : AdcDataArray(0 to ADC_CHAN_NUMBER-1)              := (others => (others => '0'));
 
 begin
@@ -79,8 +77,10 @@ begin
 
          regRdData <= (others => '0');
       else
-         memAddrArr <= (others => regAddr);
-         regRdData <= memRdArr(to_integer(unsigned(regChan)));
+         if regReq = '1' then
+            memAddrArr <= (others => regAddr);
+            regRdData <= memRdArr(to_integer(unsigned(regChan)));
+         end if;
       end if;
       
    end process;
@@ -89,13 +89,16 @@ begin
    begin
       if rising_edge (clk) then
          regAck     <= regReq;
-
          memWrEn   <= (others => '0');
          if evtBusy = '0' then
-            memWrEn(to_integer(unsigned(regChan))) <= regWrEn;
+            if regReq = '1' then
+               if regWrEn = '1' then
+                  memWrEn(to_integer(unsigned(regChan))) <= regWrEn;
+                  memWrData <= regWrData;
+               end if;
+            end if;
          end if;
 
-         memWrData <= regWrData;
       end if;
    end process;
 

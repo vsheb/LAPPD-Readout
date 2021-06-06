@@ -216,7 +216,7 @@ architecture Behavioral of A22 is
    -- DRS4 signals
    ----------------------------------------------
    -- drs4 registers signals 
-   signal drsRegMode           : sl;
+   signal drsRegMode           : slv(1 downto 0);
    signal drsRegData           : slv(7 downto 0);
    signal drsRegReq            : sl;
    signal drsRegAck            : sl;
@@ -228,6 +228,7 @@ architecture Behavioral of A22 is
    signal drsStopSampleValid   : sl;
    signal drsSampleValid       : sl; 
    signal drsCtrlBusy          : sl;
+   signal drsPllLosCnt        : Word32Array(0 to 7); 
    ----------------------------------------------
 
    ----------------------------------------------
@@ -289,7 +290,7 @@ architecture Behavioral of A22 is
 
    alias a_regClkRatio    : slv32 is regArrCfg(getRegInd("DRSREFCLKRATIO"));
    alias a_drsNSamples    : slv16 is regArrCfg(getRegInd("ADCBUFNUMWORDS"))(15 downto 0);
-   alias a_phaseAdcSrClk  : slv4  is regArrCfg(getRegInd("DRSADCPHASE"))(3 downto 0);
+   alias a_phaseAdcSrClk  : slv(2 downto 0)  is regArrCfg(getRegInd("DRSADCPHASE"))(2 downto 0);
    
    alias a_drsDEnable     : sl    is regArrCfg(getRegInd("MODE"))(C_MODE_DRS_DENABLE_BIT);
    alias a_ebFragDisable  : sl    is regArrCfg(getRegInd("MODE"))(C_MODE_EB_FRDISABLE_BIT);
@@ -301,7 +302,6 @@ architecture Behavioral of A22 is
    alias a_nSamplInPacket : slv16  is regArrCfg(getRegInd("NSAMPLEPACKET"))(15 downto 0);
    alias a_drsValidPhase  : slv(5 downto 0)  is regArrCfg(getRegInd("DRSVALIDPHASE"))(5 downto 0);
    alias a_drsValidDelay  : slv(7 downto 0)  is regArrCfg(getRegInd("DRSVALIDDELAY"))(7 downto 0);
-   alias a_srClkCutOff    : slv16  is regArrCfg(getRegInd("SRCLKCUTOFF"));
    alias a_drsWaitAddr    : slv16  is regArrCfg(getRegInd("DRSWAITADDR"));
    alias a_drsWaitInit    : slv16  is regArrCfg(getRegInd("DRSWAITINIT"));
    alias a_drsWaitStart   : slv16  is regArrCfg(getRegInd("DRSWAITSTART"));
@@ -558,7 +558,6 @@ begin
       sampleValid   => drsSampleValid,
       
       validPhase    => a_drsValidPhase,
-      srClkCutOff   => a_srClkCutOff, -- debug FIXME remove
       waitAfterAddr => a_drsWaitAddr, -- debug FIXME remove
       --waitBeforeIni => a_drsWaitInit, -- debug FIXME remove
       
@@ -576,6 +575,7 @@ begin
       drsDWrite     => drsDWrite,  -- sl
       drsDEnable    => drsDEnable, -- sl
       drsPllLck     => drsPllLck,   -- in slvN
+      drsPllLosCnt  => drsPllLosCnt,
       
       drsBusy       => drsCtrlBusy
    );
@@ -590,11 +590,18 @@ begin
          if rising_edge(ethClk125) then
             regArrSta(getRegInd("DRSSTOPSAMPLE_0")+iDrs)(drsStopSampleArr(iDrs)'range) <= 
                                                 drsStopSampleArr(iDrs);
-            regArrSta(getRegInd("DRSPLLLCK"))(7  downto 0) <= drsPllLck;
-            regArrSta(getRegInd("DRSPLLLCK"))(15 downto 8) <= drsDTap;
+            regArrSta(getRegInd("DRSPLLLOSCNT_0") + iDrs) <= drsPllLosCnt(iDrs);
          end if;
       end process;
    end generate DRS_STOPSAMPLE_GEN;
+
+   process (ethClk125)
+   begin
+      if rising_edge (ethClk125) then
+            regArrSta(getRegInd("DRSPLLLCK"))(7  downto 0) <= drsPllLck;
+            regArrSta(getRegInd("DRSPLLLCK"))(15 downto 8) <= drsDTap;
+      end if;
+   end process;
    -------------------------------------------------
 
 
@@ -869,6 +876,8 @@ begin
          else
             chanMaskAdc     <= a_ChanMaskAdc2 & a_ChanMaskAdc1;
          end if;
+         regArrSta(getRegInd("ADCTHRESHMASK_0"))   <= adcBufThrMask(31 downto 0);
+         regArrSta(getRegInd("ADCTHRESHMASK_0")+1) <= adcBufThrMask(63 downto 32);
       end if;
    end process;
    -------------------------------------------------

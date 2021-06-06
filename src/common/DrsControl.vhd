@@ -22,8 +22,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.UtilityPkg.all;
---use ieee.std_logic_arith.all;
-use ieee.numeric_std.all;
+use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
 library UNISIM;
@@ -44,7 +43,7 @@ entity DrsControl is
       refClkRatio   : in slv(31 downto 0);
 
       -- User requests
-      regMode       : in  sl; -- 0 for config reg, 1 for write reg
+      regMode       : in  slv(1 downto 0); -- 00 for config reg, 01 for write reg, 10 for write config
       regData       : in  slv(7 downto 0);
       regReq        : in  sl;
       regAck        : out sl;
@@ -53,9 +52,8 @@ entity DrsControl is
       readoutReq    : in  sl;
       readoutAck    : out sl;
       nSamples      : in  slv(11 downto 0); -- bit 11 full RO flag
-      phaseAdcSrClk : in  slv(3 downto 0);
+      phaseAdcSrClk : in  slv(2 downto 0);
       validPhase    : in  slv(5 downto 0);
-      srClkCutOff   : in  slv(15 downto 0) := (others => '1');
       waitAfterAddr : in  slv(15 downto 0) := (others => '0');  
 
       stopSample    : out Word10Array(0 to NCHIPS-1);
@@ -80,6 +78,7 @@ entity DrsControl is
       drsDWrite     : out sl;
       drsDEnable    : out sl;
       drsPllLck     : in  slv(NCHIPS-1 downto 0);
+      drsPllLosCnt  : out Word32Array(0 to NCHIPS-1);
 
       drsBusy       : out sl
    );
@@ -100,51 +99,55 @@ architecture Behavioral of DrsControl is
                           CLEANUP_S, NEXT_CLEANUP_S);
    
    type RegType is record
-      state        : StateType;
-      addr         : slv(3 downto 0);
-      srClk        : sl;
-      srIn         : sl;
-      rsrLoad      : sl;
-      dWrite       : sl;
-      dEnable      : sl;
-      regData      : slv(7 downto 0);
-      regAck       : sl;
-      dataAck      : sl;
-      nSamples     : slv(10 downto 0);
-      fullWF       : sl;
-      stopSample   : Word10Array(0 to NCHIPS-1);
-      stopSmpValid : sl;
-      sampleValid  : sl;
-      waitCount    : slv(15 downto 0);
-      validPhase   : slv(5 downto 0);
-      validCount   : slv(8 downto 0);
-      bitCount     : slv(9 downto 0);
-      validDelay   : slv(7 downto 0);
-      drsBusy      : sl;
+      state         : StateType;
+      addr          : slv(3 downto 0);
+      srClk         : sl;
+      srIn          : sl;
+      rsrLoad       : sl;
+      dWrite        : sl;
+      dEnable       : sl;
+      regData       : slv(7 downto 0);
+      regAck        : sl;
+      dataAck       : sl;
+      nSamples      : slv(10 downto 0);
+      fullWF        : sl;
+      stopSample    : Word10Array(0 to NCHIPS-1);
+      stopSmpValid  : sl;
+      sampleValid   : sl;
+      waitCount     : slv(15 downto 0);
+      validPhase    : slv(5 downto 0);
+      validCount    : slv(8 downto 0);
+      bitCount      : slv(9 downto 0);
+      validDelay    : slv(7 downto 0);
+      waitAddr      : slv(15 downto 0);
+      phaseAdcSrClk : slv(15 downto 0);
+      drsBusy       : sl;
    end record RegType;
    
    constant REG_INIT_C : RegType := (
-      state        => IDLE_S,
-      addr         => (others => '1'),
-      srClk        => '0',
-      srIn         => '0',
-      rsrLoad      => '0',
-      dWrite       => '0',
-      dEnable      => '0',
-      regData      => (others => '0'),
-      regAck       => '0',
-      dataAck      => '0',
-      fullWF       => '0',
-      nSamples     => (others => '0'),
-      stopSample   => (others => (others => '0')),
-      stopSmpValid => '0',
-      sampleValid  => '0',
-      waitCount    => (others => '0'),
-      validPhase   => (others => '0'),
-      validCount   => (others => '0'),
-      bitCount     => (others => '0'),
-      validDelay   => (others => '0'),
-      drsBusy      => '0'
+      state         => IDLE_S,
+      addr          => (others => '1'),
+      srClk         => '0',
+      srIn          => '0',
+      rsrLoad       => '0',
+      dWrite        => '0',
+      dEnable       => '0',
+      regData       => (others => '0'),
+      regAck        => '0',
+      dataAck       => '0',
+      fullWF        => '0',
+      nSamples      => (others => '0'),
+      stopSample    => (others => (others => '0')),
+      stopSmpValid  => '0',
+      sampleValid   => '0',
+      waitCount     => (others => '0'),
+      validPhase    => (others => '0'),
+      validCount    => (others => '0'),
+      bitCount      => (others => '0'),
+      validDelay    => (others => '0'),
+      waitAddr      => (others => '0'),
+      phaseAdcSrClk => (others => '0'),
+      drsBusy       => '0'
    );
 
    signal r   : RegType := REG_INIT_C;
@@ -155,21 +158,33 @@ architecture Behavioral of DrsControl is
 
    signal sampleValidQ : slv(127 downto 0);
 
+   signal iDrsPllLosCnt : Word32Array(0 to NCHIPS-1); 
+   signal iDrsPllLockR  : slv(NCHIPS-1 downto 0); 
+   signal iDrsPllLockRR : slv(NCHIPS-1 downto 0); 
+
+   constant READALL_ADDR_C : slv(3 downto 0) := "1001";
    constant TRANSP_ADDR_C  : slv(3 downto 0) := "1010";
    constant RDSHIFT_ADDR_C : slv(3 downto 0) := "1011";
    constant CONFIG_ADDR_C  : slv(3 downto 0) := "1100";
-   constant WRITE_ADDR_C   : slv(3 downto 0) := "1101";
+   constant WRITE_ADDR_C       : slv(3 downto 0) := "1101";
+   constant WRITECONF_ADDR_C   : slv(3 downto 0) := "1110";
    constant STANDBY_ADDR_C : slv(3 downto 0) := "1111";
-   constant READALL_ADDR_C : slv(3 downto 0) := "1001";
 
    attribute IOB : string;                               
    attribute IOB of drsRefClkP         : signal is "TRUE";    
    attribute IOB of drsRefClkN         : signal is "TRUE";    
+   attribute IOB of drsDWrite          : signal is "TRUE";
+   attribute IOB of drsRsrLoad         : signal is "TRUE";
+   attribute IOB of drsDEnable         : signal is "TRUE";
+   attribute IOB of drsSrClk           : signal is "TRUE";
+   attribute IOB of drsSrIn            : signal is "TRUE";
+   attribute IOB of drsAddr            : signal is "TRUE";
+
 
 begin
 
    comb : process( r, sysRst, regData, regReq, readoutReq, nSamples, DEnable, drsSrOut, phaseAdcSrClk, 
-                   validPhase, srClkCutOff, waitAfterAddr, idleMode, regMode, adcSync, validDelay) is
+                   validPhase, waitAfterAddr, idleMode, regMode, adcSync, validDelay) is
       variable v : RegType;
    begin
       v := r;
@@ -183,25 +198,28 @@ begin
       case(r.state) is 
          when IDLE_S =>
             if idleMode = b"00" then
-               v.addr      := STANDBY_ADDR_C;
+               v.addr       := STANDBY_ADDR_C;
             elsif idleMode = b"01" then
-               v.addr      := READALL_ADDR_C;
+               v.addr       := READALL_ADDR_C;
             elsif idleMode  = b"10" then 
-               v.addr      := TRANSP_ADDR_C;
+               v.addr       := TRANSP_ADDR_C;
             elsif idleMode = b"11" then
-               v.addr      := RDSHIFT_ADDR_C;
-            else
-               v.addr      := STANDBY_ADDR_C;
-            end if;
-            v.srClk        := '0';
-            v.srIn         := '0';
-            v.rsrLoad      := '0';
-            v.fullWF       := '0';
-                           
-            v.drsBusy      := '0';
-
-            v.stopSmpValid := '0';
-            v.validDelay   := validDelay;
+               v.addr       := RDSHIFT_ADDR_C;
+            else            
+               v.addr       := STANDBY_ADDR_C;
+            end if;         
+            v.srClk         := '0';
+            v.srIn          := '0';
+            v.rsrLoad       := '0';
+            v.fullWF        := '0';
+                            
+            v.drsBusy       := '0';
+                            
+            v.stopSmpValid  := '0';
+            v.validDelay    := validDelay;
+            v.waitAddr      := waitAfterAddr;
+            v.phaseAdcSrClk := (others => '0');
+            v.phaseAdcSrClk(2 downto 0) := phaseAdcSrClk;
 
 
             if DEnable = '1' then
@@ -220,17 +238,21 @@ begin
             v.bitCount   := (others => '0');
             if RegReq = '1' then
                v.regData    := regData;
-               if regMode = '0' then
-                  v.addr    := CONFIG_ADDR_C;
-               else
-                  v.addr    := WRITE_ADDR_C;
-               end if;
                v.state      := LOAD_CONFIG_S;
+               if regMode = b"00" then
+                  v.addr    := CONFIG_ADDR_C;
+               elsif regMode = b"01" then
+                  v.addr    := WRITE_ADDR_C;
+               elsif regMode = b"10" then
+                  v.addr    := WRITECONF_ADDR_C;
+               else 
+                  v.state      := IDLE_S;
+               end if;
                --v.drsBusy     := '1';
             elsif readoutReq = '1' then
                if nSamples > x"400" then 
                   v.fullWF   := '1';
-                  v.nSamples := std_logic_vector(to_unsigned(1023,11)); 
+                  v.nSamples := conv_std_logic_vector(1023,11); 
                else
                   v.nSamples := nSamples(10 downto 0) - 1;
                   v.fullWF   := '0';
@@ -322,7 +344,7 @@ begin
             end if;
 
          when TUNE_ADC_PHASE_S => 
-            if r.waitCount < phaseAdcSrClk  then
+            if r.waitCount < x"0014" - r.phaseAdcSrClk  then
                v.waitCount := r.waitCount + 1;
             else
                v.waitCount := (others => '0');
@@ -341,15 +363,10 @@ begin
          -- ROI readout
          when DATA_RSR_S =>   
             v.drsBusy   := '1';
-            if r.waitCount < srClkCutOff then
-               v.rsrLoad := '1';
-            else
-               v.rsrLoad := '0';
-            end if;
+            v.rsrLoad := '1';
             if r.waitCount < SR_CLOCK_HALF_PERIOD_G-1 then
                v.waitCount := r.waitCount + 1;
             else
-               --v.rsrLoad   := '0';
                v.waitCount := (others => '0');
                v.state     := DATA_RSR_NEXT_S;
             end if;            
@@ -357,7 +374,7 @@ begin
          when DATA_RSR_NEXT_S =>   
             v.drsBusy   := '1';
             v.rsrLoad := '0';
-            if r.waitCount < SR_CLOCK_HALF_PERIOD_G-1 + waitAfterAddr then
+            if r.waitCount < SR_CLOCK_HALF_PERIOD_G-1 + r.waitAddr then
                v.waitCount := r.waitCount + 1;
             else
                v.rsrLoad   := '0';
@@ -369,11 +386,7 @@ begin
          when READOUT_DATA_S => 
             v.drsBusy   := '1';
             if r.bitCount < r.nSamples then
-               if r.waitCount < srClkCutOff then
-                  v.srClk     := '1';
-               else
-                  v.srClk     := '0';
-               end if;
+               v.srClk     := '1';
             else
                v.srClk     := '0';
             end if;
@@ -495,11 +508,7 @@ begin
          when DATA_RD_FULL_S => 
             v.drsBusy   := '1';
 
-            if r.waitCount < srClkCutOff then
-               v.srClk       := '1';
-            else
-               v.srClk       := '0';
-            end if;
+            v.srClk       := '1';
 
             if r.validCount(8 downto 3) = r.validPhase then
                v.sampleValid := '1';
@@ -602,26 +611,10 @@ begin
          v := REG_INIT_C;
       end if;
 
-      -- Outputs to ports
-      regAck        <= r.regAck;
-      readoutAck    <= r.dataAck;
-      stopSample    <= r.stopSample;
-      --sampleValid   <= r.sampleValid;
-      drsAddr       <= r.addr;
-      drsSrIn       <= r.srIn;
-      drsRsrLoad    <= r.rsrLoad;
-      drsDWrite     <= r.dWrite;
-      drsDEnable    <= r.dEnable;
-      stopSmpValid  <= r.stopSmpValid;
-      iSrClk        <= r.srClk;
-
       -- Assignment of combinatorial variable to signal
       rin <= v;
 
    end process;
-   drsSrClk      <= iSrClk;
-
-   drsBusy       <= r.drsBusy;
 
    seq : process (sysClk) is
    begin
@@ -634,6 +627,28 @@ begin
       end if;
    end process seq;
 
+   process (sysClk)
+   begin
+      if rising_edge (sysClk) then
+         -- Outputs to ports
+         regAck        <= r.regAck;
+         readoutAck    <= r.dataAck;
+         stopSample    <= r.stopSample;
+         stopSmpValid  <= r.stopSmpValid;
+         drsAddr       <= r.addr;
+         --drsSrIn       <= r.srIn;
+         --drsRsrLoad    <= r.rsrLoad;
+         --drsDWrite     <= r.dWrite;
+         --drsDEnable    <= r.dEnable;
+         --drsSrClk      <= r.srClk;
+         drsBusy       <= r.drsBusy;
+
+         sampleValidQ  <= sampleValidQ(126 downto 0) & r.sampleValid;
+         sampleValid   <= sampleValidQ(conv_integer(r.validDelay));
+      end if;
+   end process;
+
+
    U_RefClk : entity work.clk_div 
    port map (
       clk       => sysClk,
@@ -645,7 +660,89 @@ begin
       hb        => open,
       sync_strb => open
    );
+   ----------------------------------
+   -- DENABLE out reg
+   ----------------------------------
+   FDRE_DENABLE : FDRE
+   generic map (   
+      INIT => '0'
+   )  
+   port map (   
+      D  => r.dEnable,
+      C  => sysClk,
+      CE => '1',
+      R  => '0',
+      Q  => drsDEnable
+   );
+   ----------------------------------
 
+   ----------------------------------
+   -- RSRLOAD out reg
+   ----------------------------------
+   FDRE_RSRLOAD : FDRE
+   generic map (   
+      INIT => '0'
+   )  
+   port map (   
+      D  => r.rsrLoad,
+      C  => sysClk,
+      CE => '1',
+      R  => '0',
+      Q  => drsRsrLoad
+   );
+   ----------------------------------
+
+   ----------------------------------
+   -- SRCLK out reg
+   ----------------------------------
+   FDRE_SRCLK : FDRE
+   generic map (   
+      INIT => '0'
+   )  
+   port map (   
+      D  => r.srClk,
+      C  => sysClk,
+      CE => '1',
+      R  => '0',
+      Q  => drsSrClk
+   );
+   ----------------------------------
+
+   ----------------------------------
+   -- SRIN out reg
+   ----------------------------------
+   FDRE_SRIN : FDRE
+   generic map (   
+      INIT => '0'
+   )  
+   port map (   
+      D  => r.SrIn,
+      C  => sysClk,
+      CE => '1',
+      R  => '0',
+      Q  => drsSrIn
+   );
+   ----------------------------------
+
+   ----------------------------------
+   -- DWrite out reg
+   ----------------------------------
+   FDRE_DWRITE : FDRE
+   generic map (   
+      INIT => '0'
+   )  
+   port map (   
+      D  => r.dWrite,
+      C  => sysClk,
+      CE => '1',
+      R  => '0',
+      Q  => drsDWrite
+   );
+   ----------------------------------
+
+   ----------------------------------
+   -- drsRefClk out registers
+   ----------------------------------
    FDRE_REFP : FDRE
    generic map (   
       INIT => '0'
@@ -669,17 +766,28 @@ begin
       R  => '0',
       Q  => drsRefClkN
    );
+   ----------------------------------
 
-   --drsRefClkP <= iRefClk;
-   --drsRefClkN <= not iRefClk;
 
-   process (sysClk)
-   begin
-      if rising_edge (sysClk) then
-         sampleValidQ <= sampleValidQ(126 downto 0) & rin.sampleValid;
-      end if;
-   end process;
-   sampleValid <= sampleValidQ(to_integer(unsigned(rin.validDelay)));
+
+   PLL_CNT_GEN : for i in 0 to NCHIPS-1 generate
+      process (sysClk)
+      begin
+         if rising_edge (sysClk) then
+            if sysRst = '1' then
+               iDrsPllLosCnt(i) <= (others => '0');
+            else
+               iDrsPllLockR(i)  <= drsPllLck(i);
+               iDrsPllLockRR(i) <= iDrsPllLockR(i); 
+
+               if iDrsPllLockRR(i) = '1' and iDrsPllLockR(i) = '0' then
+                  iDrsPllLosCnt(i) <= iDrsPllLosCnt(i) + 1;
+               end if; 
+            end if;
+         end if;
+      end process;
+   end generate PLL_CNT_GEN;
+   drsPllLosCnt <= iDrsPllLosCnt;
 
 
 end Behavioral;

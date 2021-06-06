@@ -42,7 +42,7 @@ entity RegMap is
     drsPedRdData   : in  slv(G_ADC_BIT_WIDTH-1 downto 0);
 
     -- DRS regs
-    drsRegMode     : out sl; -- only two regsiters: 0--config 1--write
+    drsRegMode     : out slv(1 downto 0); -- only two regsiters: 0--config 1--write, 2--witeconf
     drsRegData     : out slv(7 downto 0);
     drsRegReq      : out sl;
     drsRegAck      : in sl;
@@ -213,7 +213,7 @@ begin
       ----------------------------------------------------
       elsif regDevAddr = x"4" then
          regRdData    <= (others => '0');
-         drsRegMode   <= regAddr_r(2);
+         drsRegMode   <= regAddr_r(3 downto 2);
          drsRegReq    <= regReq_r;
          drsRegData   <= regWrData_r(7 downto 0);   
          regAck       <= drsRegAck;

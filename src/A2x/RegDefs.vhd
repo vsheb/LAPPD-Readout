@@ -26,7 +26,7 @@ library work;
 package RegDefs is
 
    ----- FW VERSION -----------------------------------
-   constant FW_VERSION     : integer := 107;
+   constant FW_VERSION     : integer := 110;
    constant FW_VERSION_SLV : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(FW_VERSION, 32));
    ----------------------------------------------------
 
@@ -106,15 +106,14 @@ package RegDefs is
     ( "DRSREFCLKRATIO  ",  X"0390", X"0000_0033", B"01",1),
     ( "ADCFRAMEDEBUG   ",  X"03A8", X"0000_0000", B"10",2),
     ( "ADCDATADELAY    ",  X"0400", X"0000_000E", B"01",32),
-    ( "ADCDELAYDEBUG   ",  X"0500", X"0000_0000", B"10",36), --(16+2)*2
-    ( "DRSADCPHASE     ",  X"0600", X"0000_0002", B"01",1),
+    --( "ADCDELAYDEBUG   ",  X"0500", X"0000_0000", B"10",36), --(16+2)*2
+    ( "DRSADCPHASE     ",  X"0600", X"0000_0000", B"01",1),
     ( "DRSIDLEMODE     ",  X"0608", X"0000_0000", B"01",1),
     ( "NSAMPLEPACKET   ",  X"0610", X"0000_0200", B"01",1),
     ( "DRSVALIDPHASE   ",  X"0618", X"0000_0000", B"01",1),
-    ( "DRSVALIDDELAY   ",  X"0620", X"0000_001C", B"01",1),
+    ( "DRSVALIDDELAY   ",  X"0620", X"0000_0038", B"00",1),
     ( "EBDEBUG         ",  X"0628", X"0000_0000", B"10",1),
-    ( "SRCLKCUTOFF     ",  X"0630", X"0000_000F", B"01",1),
-    ( "DRSWAITADDR     ",  X"0638", X"0000_0012", B"01",1),
+    ( "DRSWAITADDR     ",  X"0638", X"0000_0010", B"01",1),
     ( "DRSWAITSTART    ",  X"0640", X"0000_0000", B"01",1),
     ( "DRSWAITINIT     ",  X"0648", X"0000_0000", B"01",1),
     ( "DRSSTOPSAMPLE   ",  X"0650", X"0000_0000", B"10",8),
@@ -123,7 +122,9 @@ package RegDefs is
     ( "CURRENTPORT     ",  X"0680", X"0000_0000", B"10",1),
     ( "ZEROTHRESH      ",  X"0700", X"0000_0000", B"01",64),
     ( "EXTTRGCNT       ",  X"0800", X"0000_0000", B"10",1),
-    ( "CUREVTNUM       ",  X"0808", X"0000_0000", B"10",1)
+    ( "CUREVTNUM       ",  X"0808", X"0000_0000", B"10",1),
+    ( "DRSPLLLOSCNT    ",  X"0810", X"0000_0000", B"10",8),
+    ( "ADCTHRESHMASK   ",  X"0850", X"0000_0000", B"10",2)
   );
   ---------------------------------------------------
 
@@ -371,21 +372,6 @@ package body RegDefs is
     return v_reginfo_arr_out;
   end function expandRegMap;
   -------------------------------------------------------------------
-
---FUNCTION vec2str(vec : std_logic_vector) RETURN string IS 
-   --VARIABLE stmp : string(vec'LEFT+1 DOWNTO 1);
---BEGIN
-   --FOR i IN vec'REVERSE_RANGE LOOP 
-      --IF vec(i) = '1' THEN 
-         --stmp(i+1) := '1';
-      --ELSIF vec(i) = '0' THEN 
-         --stmp(i+1) := '0';
-      --ELSE
-         --stmp(i+1) := 'X';
-      --END IF; 
-   --END LOOP;
-   --RETURN stmp;
---END vec2str;
 
    function vec2str (value : STD_LOGIC_VECTOR) return STRING is
       constant NULLS  : string(1 to 1) := "X";

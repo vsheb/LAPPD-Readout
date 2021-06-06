@@ -5,9 +5,6 @@ use work.UtilityPkg.all;
 use work.LappdPkg.all;
 use work.RegDefs.all;
 
---use work.Version.all;
---use work.P1Pkg.all;
-
 entity RegControl is
    generic (
       GATE_DELAY_G : time := 1 ns;
@@ -50,7 +47,7 @@ entity RegControl is
       drsPedRdData   : in  slv(G_ADC_BIT_WIDTH-1 downto 0);
 
       -- DRS regs
-      drsRegMode     : out sl; -- only two regsiters: 0--config 1--write
+      drsRegMode     : out slv(1 downto 0); -- only two regsiters: 0--config 1--write, 2--writeconf
       drsRegData     : out slv(7 downto 0);
       drsRegReq      : out sl;
       drsRegAck      : in sl;

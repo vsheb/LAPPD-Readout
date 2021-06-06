@@ -1,6 +1,5 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
 use ieee.std_logic_unsigned.all;
 use work.UtilityPkg.all;
 use work.LappdPkg.All;
@@ -31,20 +30,13 @@ end AdcIniControl;
 architecture Behavioral of AdcIniControl is
    signal iRst                : std_logic;
    signal adcConvClkR         : std_logic;
-   signal iRstDivClk          : std_logic;
+   signal adcConvClkRR        : std_logic;
 
    signal iAdcTxTrig          : std_logic := '0';
    signal adcTxTrigR          : std_logic := '0';
-   signal adcTxTrigRR         : std_logic := '0';
-   signal adcTxTrigRCopy      : std_logic := '0';
-   signal iTxTrgEdge          : std_logic := '0';
-   signal iTxTrgEdgeR         : std_logic := '0';
-   signal iTxTrgEdgeRR        : std_logic := '0';
-   signal localTxTrg          : std_logic := '0';
-   signal txTrgCnt            : std_logic_vector(1 downto 0)  := (others => '0');
    signal localAdcReset       : std_logic := '0';
-   signal adcResetCnt         : std_logic_vector(4 downto 0)  := (others => '0');
    signal adcSyncCnt          : std_logic_vector(2 downto 0) := (others => '0');
+   signal stateCnt            : std_logic_vector(2 downto 0) := (others => '0');
 
    signal bufRCE_i            : std_logic := '1';
    signal bufRCLR_i           : std_logic := '0';
@@ -56,6 +48,14 @@ architecture Behavioral of AdcIniControl is
                                    OUT_ENA_S,
                                    DONE_S );
    signal rst_state    : rstSeqStatesType := IDLE_S;
+
+   type adcSyncStatesType    is (  IDLE_S, 
+                                   ADCCONV_SYNC_S,
+                                   PHASE_TUNE_S,
+                                   GEN_TXTRIG_S
+                                );
+
+   signal sync_state   : adcSyncStatesType := IDLE_S;
    
    attribute IOB : string;                               
    attribute IOB of adcTxTrigR         : signal is "TRUE";
@@ -73,43 +73,55 @@ begin
    begin
       if rising_edge (sysClk) then
          adcConvClkR <= adcConvClk;
+         adcConvClkRR <= adcConvClkR;
       end if;
    end process;
 
    -------------------------------------------------------------------------
+   -- ADC sync with TXTrig signal
    -------------------------------------------------------------------------
-   EdgeDetTxTrg_U : entity work.EdgeDetector 
-   port map (
-      clk    => sysClk,
-      rst    => '0',
-      input  => txTrigCmd,
-      output => iTxTrgEdge
-   );
    process (sysClk)
    begin
       if rising_edge (sysClk) then
-         iTxTrgEdgeR <= iTxTrgEdge;
-         iTxTrgEdgeRR <= iTxTrgEdgeR;
-         --adcTxTrigR   <= iAdcTxTrig;
-         if iTxTrgEdge = '1' then
-            localTxTrg <= '1';
+         adcSyncCnt <= adcSyncCnt + 1;
+         stateCnt   <= stateCnt + 1;
+         adcSync <= '0';
+         case sync_state  is 
+            when IDLE_S => 
+               iAdcTxTrig <= '0';
+               if txTrigCmd = '1' then
+                  sync_state <= ADCCONV_SYNC_S;
+               end if;
+               if adcSyncCnt = b"000" then
+                  adcSync <= '1';
+               end if;
+            when ADCCONV_SYNC_S => 
+               stateCnt <=  (others => '0');
+               if adcConvClkR = '1' and adcConvClk = '0' then
+                  sync_state <= PHASE_TUNE_S;
+                  stateCnt <= (others => '0');
+               end if;
+            when PHASE_TUNE_S => 
+               if stateCnt = b"010" then
+                  iAdcTxTrig <= '1';
+                  stateCnt<= (others => '0');
+                  sync_state <= GEN_TXTRIG_S;
+               end if;
+
+            when GEN_TXTRIG_S =>
+               if stateCnt = b"011" then
+                  iAdcTxTrig <= '0';
+                  sync_state <= IDLE_S;
+               end if;
+            when others => 
+               sync_state <= IDLE_S;
+         end case;
+         
+         if iAdcTxTrig = '1' then 
+            adcSyncCnt <= b"000";
          end if;
-         if localTxTrg = '1' and adcConvClkR = '1' then
-            iAdcTxTrig <= '1';
-            txTrgCnt   <= (others => '1');
-         end if;
-         if iAdcTxTrig = '1' and adcConvClkR = '1' then
-            localTxTrg <= '0';
-            iAdcTxTrig <= '0';
-         end if;
-         --if iAdcTxTrig = '1' then
-            --txTrgCnt <= txTrgCnt - 1;
-         --end if;
-         --if txTrgCnt = b"00" then
-            --txTrgCnt   <= (others => '0');
-            --iAdcTxTrig <= '0';
-            --localTxTrg <= '0';
-         --end if;
+
+
       end if;
    end process;
 
@@ -124,27 +136,11 @@ begin
       R  => '0',
       D  => iAdcTxTrig
    );
-   --adcTxTrig <= adcTxTrigRR;
-   --adcTxTrig <= adcTxTrigR;
-
-   process (sysClk)
-   begin
-      if rising_edge (sysClk) then
-         adcTxTrigRCopy <= iTxTrgEdgeRR;
-         if adcTxTrigRCopy = '1' and adcConvClkR = '1' then
-            adcSyncCnt <=  (others => '0');
-         else
-            adcSyncCnt <= adcSyncCnt + 1;
-         end if;
-         if adcSyncCnt = b"111" then
-            adcSync <= '1';
-         else
-            adcSync <= '0';
-         end if;
-      end if;
-   end process;
+   -------------------------------------------------------------------------
 
 
+
+   -------------------------------------------------------------------------
    pulseShaperReset_U : entity work.PulseShaper
       port map (
          clk => sysClk,

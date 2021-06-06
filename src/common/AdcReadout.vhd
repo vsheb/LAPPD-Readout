@@ -44,7 +44,7 @@ entity AdcReadout is
       adcConvClk    : in std_logic; -- read clock for ADC
       adcSync       : in std_logic;
 
-      bitslip       : slv(N_DATA_LINES-1 downto 0);
+      bitslip       : in slv(N_DATA_LINES-1 downto 0);
 
       bufRCLR       : in std_logic;
       bufRCE        : in std_logic;
@@ -168,7 +168,6 @@ begin
    end process;
 
    
-
    process (sysClk)
    begin
       if rising_edge (sysClk) then
