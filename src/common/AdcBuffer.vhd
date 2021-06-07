@@ -5,7 +5,6 @@ use ieee.numeric_std.all;
 library work;
 use work.UtilityPkg.all;
 use work.LappdPkg.all;
-use work.RegDefs.all;
 
 
 
@@ -75,9 +74,8 @@ architecture adcBufArch of AdcBuffer is
    ----------------------------------------------
    -- constants
    ----------------------------------------------
-   constant bufAddrMax        : slv(ADC_DATA_DEPTH-1 downto 0)    := (others => '1');
-   constant subMin            : signed(ADC_DATA_WIDTH-1 downto 0) := (ADC_DATA_WIDTH-1 => '1', others => '0');
-   constant subMax            : signed(ADC_DATA_WIDTH-1 downto 0) := (ADC_DATA_WIDTH-1 => '0', others => '1');
+   constant subMin            : signed(ADC_DATA_WIDTH-1 downto 0) := x"800";
+   constant subMax            : signed(ADC_DATA_WIDTH-1 downto 0) := x"7ff";
    
    ----------------------------------------------
    -- signals

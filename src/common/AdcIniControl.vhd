@@ -33,7 +33,6 @@ architecture Behavioral of AdcIniControl is
    signal adcConvClkRR        : std_logic;
 
    signal iAdcTxTrig          : std_logic := '0';
-   signal adcTxTrigR          : std_logic := '0';
    signal localAdcReset       : std_logic := '0';
    signal adcSyncCnt          : std_logic_vector(2 downto 0) := (others => '0');
    signal stateCnt            : std_logic_vector(2 downto 0) := (others => '0');
@@ -58,7 +57,9 @@ architecture Behavioral of AdcIniControl is
    signal sync_state   : adcSyncStatesType := IDLE_S;
    
    attribute IOB : string;                               
-   attribute IOB of adcTxTrigR         : signal is "TRUE";
+   attribute IOB of adcTxTrig         : signal is "TRUE";
+   attribute keep : string;
+   attribute keep of iAdcTxTrig       : signal is "TRUE";
 
 begin
 

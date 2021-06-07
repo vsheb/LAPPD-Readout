@@ -78,6 +78,7 @@ entity DrsControl is
       drsDWrite     : out sl;
       drsDEnable    : out sl;
       drsPllLck     : in  slv(NCHIPS-1 downto 0);
+      drsPllLckSync : out slv(NCHIPS-1 downto 0);
       drsPllLosCnt  : out Word32Array(0 to NCHIPS-1);
 
       drsBusy       : out sl
@@ -111,6 +112,7 @@ architecture Behavioral of DrsControl is
       dataAck       : sl;
       nSamples      : slv(10 downto 0);
       fullWF        : sl;
+      srOut         : slv(NCHIPS-1 downto 0);
       stopSample    : Word10Array(0 to NCHIPS-1);
       stopSmpValid  : sl;
       sampleValid   : sl;
@@ -136,6 +138,7 @@ architecture Behavioral of DrsControl is
       regAck        => '0',
       dataAck       => '0',
       fullWF        => '0',
+      srOut         => (others => '0'),
       nSamples      => (others => '0'),
       stopSample    => (others => (others => '0')),
       stopSmpValid  => '0',
@@ -171,15 +174,21 @@ architecture Behavioral of DrsControl is
    constant STANDBY_ADDR_C : slv(3 downto 0) := "1111";
 
    attribute IOB : string;                               
-   attribute IOB of drsRefClkP         : signal is "TRUE";    
-   attribute IOB of drsRefClkN         : signal is "TRUE";    
-   attribute IOB of drsDWrite          : signal is "TRUE";
-   attribute IOB of drsRsrLoad         : signal is "TRUE";
-   attribute IOB of drsDEnable         : signal is "TRUE";
-   attribute IOB of drsSrClk           : signal is "TRUE";
-   attribute IOB of drsSrIn            : signal is "TRUE";
-   attribute IOB of drsAddr            : signal is "TRUE";
+   --attribute IOB of drsRefClkP         : signal is "TRUE";    
+   --attribute IOB of drsRefClkN         : signal is "TRUE";    
+   --attribute IOB of drsDWrite          : signal is "TRUE";
+   --attribute IOB of drsRsrLoad         : signal is "TRUE";
+   --attribute IOB of drsDEnable         : signal is "TRUE";
+   --attribute IOB of drsSrClk           : signal is "TRUE";
+   --attribute IOB of drsSrIn            : signal is "TRUE";
+   --attribute IOB of drsAddr            : signal is "TRUE";
 
+   attribute keep : string;
+
+   attribute IOB of drsRefClkP, drsRefClkN, drsDWrite, drsRsrLoad, drsDEnable, drsSrClk,  drsSrIn, drsAddr : signal is "TRUE";
+   attribute keep of drsRefClkP, drsRefClkN, drsDWrite, drsRsrLoad, drsDEnable, drsSrClk,  drsSrIn, drsAddr : signal is "TRUE";
+   attribute keep of r : signal is "TRUE";
+   attribute keep of iDrsPllLockR, iDrsPllLockRR : signal is "TRUE";
 
 begin
 
@@ -193,6 +202,7 @@ begin
       v.regAck      := '0';
       v.dataAck     := '0';
       v.sampleValid := '0';
+      v.srOut       := drsSrOut;
       
       -- State machine 
       case(r.state) is 
@@ -393,7 +403,7 @@ begin
             if r.stopSmpValid = '0' then 
                if (r.bitCount < 10) then
                   for iChip in NCHIPS-1 downto 0 loop
-                     v.stopSample(iChip)(9 - conv_integer(r.bitCount)) := drsSrOut(iChip);
+                     v.stopSample(iChip)(9 - conv_integer(r.bitCount)) := r.srOut(iChip);
                   end loop;
                end if;
             end if;
@@ -787,7 +797,8 @@ begin
          end if;
       end process;
    end generate PLL_CNT_GEN;
-   drsPllLosCnt <= iDrsPllLosCnt;
+   drsPllLosCnt  <= iDrsPllLosCnt;
+   drsPllLckSync <= iDrsPllLockRR; 
 
 
 end Behavioral;

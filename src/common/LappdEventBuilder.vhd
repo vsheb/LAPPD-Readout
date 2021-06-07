@@ -133,7 +133,8 @@ architecture behav of LappdEventBuilder is
    ---------------- TYPE DEFENITIONS ---------------------------------------------
    -------------------------------------------------------------------------------
    type StateType is (IDLE_S, TRG_RSVD_S, SEND_DRS_REQ_S, 
-                      WAIT_DRS_START_S, WAIT_DRS_FINISH_S, WAIT_EVT_READY_S, 
+                      WAIT_DRS_START_S, WAIT_DRS_FINISH_S, 
+                      PREP_HIT_MASK_S, WAIT_EVT_READY_S, 
                       INI_EVT_HDR_S, SND_EVT_HDR_S, 
                       INI_HIT_HDR_S, SND_HIT_HDR_S, SND_HIT_PLD_S, SND_HIT_FTR_S );
 
@@ -150,6 +151,7 @@ architecture behav of LappdEventBuilder is
       evtNFrames          : integer;
       iWordCnt            : integer;
       iWordCntTot         : integer;
+      stateCnt            : integer;
       seqNum              : slv64;
       iFragment           : integer;
       iHitCnt             : integer;
@@ -193,6 +195,7 @@ architecture behav of LappdEventBuilder is
       evtNFrames          => 0,
       iWordCnt            => 0,
       iWordCntTot         => 0,
+      stateCnt            => 0,
       iFragment           => 0,
       seqNum              => (others => '0'),
       iHitCnt             => 0,
@@ -321,7 +324,6 @@ begin
 
          when TRG_RSVD_S =>
             --r_nxt.seqNum        <= (others => '0');
-            r_nxt.adcChannel <= fGetNextHit(r_cur.hitsMask);
             r_nxt.state      <= SEND_DRS_REQ_S;
             if r_cur.udpNumOfPorts = x"0000" or udpNumOfPorts = x"0001" then
                r_nxt.udpCurrentPort <= r_cur.udpStartPort;
@@ -338,7 +340,6 @@ begin
 
          -- start DRS4 readout sequence
          when SEND_DRS_REQ_S => 
-            r_nxt.hitsNumber <= fCalcNumberOfHits(r_cur.hitsMask);
             if r_cur.drsStartCnt = r_cur.DrsWaitStart then
                if adcConvClk = '0' then
                   r_nxt.drsReq <= '1';
@@ -357,20 +358,34 @@ begin
             r_nxt.rdEnable <= '1';
             if drsBusy = '1' then
                r_nxt.state <= WAIT_DRS_FINISH_S;
-               r_nxt.drsNum <= fGetDrsNum(r_cur.adcChannel);
             end if;
 
          -- wait until DRS4 finished to process input signals
          when WAIT_DRS_FINISH_S =>
             r_nxt.dbg <= X"0002";
             if drsDone = '1' then
-               r_nxt.state  <= WAIT_EVT_READY_S;
+               
+               r_nxt.stateCnt <= 0;
+               r_nxt.state  <= PREP_HIT_MASK_S;
                r_nxt.drsReq <= '0';
-               r_nxt.drsStopSample <= drsStopSample(r_cur.drsNum);
             end if;
-         
+
+         when PREP_HIT_MASK_S =>
+            r_nxt.stateCnt <= r_cur.stateCnt + 1;
+            r_nxt.hitsMask      <= hitsMask;
+            r_nxt.hitsMaskCur   <= hitsMask;
+            r_nxt.drsNum        <= fGetDrsNum(r_cur.adcChannel);
+            r_nxt.adcChannel    <= fGetNextHit(r_cur.hitsMask);
+            r_nxt.hitsNumber    <= fCalcNumberOfHits(r_cur.hitsMask);
+            -- ADC data has latency 
+            if r_cur.stateCnt = 128 then 
+               r_nxt.stateCnt      <= 0;
+               r_nxt.state  <= WAIT_EVT_READY_S;
+            end if;
+
          -- prepare some event data
          when WAIT_EVT_READY_S =>
+            r_nxt.drsStopSample <= drsStopSample(r_cur.drsNum);
             r_nxt.evtSize <= std_logic_vector(to_unsigned(r_cur.hitsNumber*r_cur.nSamples*2, 16));
             --r_nxt.state   <= INI_EVT_HDR_S;
             r_nxt.state   <= INI_HIT_HDR_S;

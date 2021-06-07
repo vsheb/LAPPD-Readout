@@ -228,7 +228,8 @@ architecture Behavioral of A22 is
    signal drsStopSampleValid   : sl;
    signal drsSampleValid       : sl; 
    signal drsCtrlBusy          : sl;
-   signal drsPllLosCnt        : Word32Array(0 to 7); 
+   signal drsPllLosCnt         : Word32Array(0 to 7); 
+   signal drsPllLckSync        : slv(G_N_DRS-1 downto 0);
    ----------------------------------------------
 
    ----------------------------------------------
@@ -575,6 +576,7 @@ begin
       drsDWrite     => drsDWrite,  -- sl
       drsDEnable    => drsDEnable, -- sl
       drsPllLck     => drsPllLck,   -- in slvN
+      drsPllLckSync => drsPllLckSync,  
       drsPllLosCnt  => drsPllLosCnt,
       
       drsBusy       => drsCtrlBusy
@@ -598,7 +600,7 @@ begin
    process (ethClk125)
    begin
       if rising_edge (ethClk125) then
-            regArrSta(getRegInd("DRSPLLLCK"))(7  downto 0) <= drsPllLck;
+            regArrSta(getRegInd("DRSPLLLCK"))(7  downto 0) <= drsPllLckSync;
             regArrSta(getRegInd("DRSPLLLCK"))(15 downto 8) <= drsDTap;
       end if;
    end process;
@@ -912,7 +914,6 @@ begin
          drsStopSample     => drsStopSampleArr,
 
          drsWaitStart      => a_drsWaitStart,
-
 
          fragDisable       => a_ebFragDisable,
 

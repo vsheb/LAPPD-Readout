@@ -118,6 +118,8 @@ architecture Behavioral of AdcReadout is
    signal doBitslipManual     : std_logic_vector(N_DATA_LINES-1 downto 0) := (others => '0');
 
    signal adcDataIn           : std_logic_vector(N_DATA_LINES-1 downto 0);
+   signal adcDataInInv        : std_logic_vector(N_DATA_LINES-1 downto 0);
+   signal adcDataInDir        : std_logic_vector(N_DATA_LINES-1 downto 0);
 
    signal doBitslipAuto       : std_logic := '0';
    signal adcDoClkIBuf        : std_logic;
@@ -155,8 +157,17 @@ architecture Behavioral of AdcReadout is
    attribute IOB of iAdcConvClkR       : signal is "TRUE";
 
    attribute keep : string;
-   attribute keep of adcDataDivClkQ    : signal is "TRUE";
-   attribute keep of frameDataDivClkQ  : signal is "TRUE";    
+   attribute keep of adcFrClk           : signal is "TRUE";    
+   attribute keep of adcDoClk           : signal is "TRUE";    
+   attribute keep of adcDoClkBufR       : signal is "TRUE";    
+   attribute keep of adcDoClkBufIo      : signal is "TRUE";    
+   attribute keep of adcDoClkBufIoInv   : signal is "TRUE";    
+   attribute keep of adcDataIn          : signal is "TRUE";    
+   attribute keep of adcDataShifted     : signal is "TRUE";    
+   attribute keep of adcFrClkShifted    : signal is "TRUE";
+   attribute keep of iAdcConvClkR       : signal is "TRUE";
+   attribute keep of frameDataDivClkQ   : signal is "TRUE";    
+   attribute keep of adcDataDivClkQ     : signal is "TRUE";    
 
 begin
 
@@ -279,30 +290,26 @@ begin
    -- Differential buffers for ADC data lines 
    ----------------------------------------------------
    GEN_ADC_DO : for iAdcChan in 0 to N_DATA_LINES-1 generate 
-      INVERTED : if ADCDOUT_INVERT_MASK(iAdcChan) = '1' generate 
-         IBUFDS_ADC_DATA  : IBUFDS_DIFF_OUT
-            generic map (
-               DIFF_TERM => TRUE
-            )
-            port map (
-               O  =>  open, 
-               OB =>  adcDataIn(iAdcChan), 
-               I  =>  adcDataInP(iAdcChan), 
-               IB =>  adcDataInN(iAdcChan)
-            );
-         end generate INVERTED;
-      DIRECT : if ADCDOUT_INVERT_MASK(iAdcChan) = '0' generate 
-         IBUFDS_ADC_DATA  : IBUFDS_DIFF_OUT
-            generic map (
-               DIFF_TERM => TRUE
-            )
-            port map (
-               O  =>  adcDataIn(iAdcChan), 
-               OB =>  open, 
-               I  =>  adcDataInP(iAdcChan), 
-               IB =>  adcDataInN(iAdcChan)
-            );
-         end generate DIRECT;
+      
+      IBUFDS_ADC_DATA_I  : IBUFDS_DIFF_OUT
+         generic map (
+            DIFF_TERM => TRUE
+         )
+         port map (
+            O  =>  adcDataInDir(iAdcChan), 
+            OB =>  adcDataInInv(iAdcChan), 
+            I  =>  adcDataInP(iAdcChan), 
+            IB =>  adcDataInN(iAdcChan)
+         );
+      
+      DIRECT_GEN : if ADCDOUT_INVERT_MASK(iAdcChan) = '0' generate 
+         adcDataIn(iAdcChan) <= adcDataInDir(iAdcChan);
+      end generate DIRECT_GEN;
+
+      INVERTED_GEN : if ADCDOUT_INVERT_MASK(iAdcChan) = '1' generate 
+         adcDataIn(iAdcChan) <= adcDataInInv(iAdcChan);
+      end generate INVERTED_GEN;
+
    end generate GEN_ADC_DO;
    ----------------------------------------------------
 
