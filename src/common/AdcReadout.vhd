@@ -69,6 +69,7 @@ entity AdcReadout is
       adcDelayDebug : out Word5Array(0 to 17);
       bitslipCnt    : out std_logic_vector(31 downto 0);
       bitslipGood   : out sl;
+      adcChanMask   : in slv(31 downto 0) := (others => '1');
 
       -- outputs to fabric
       adcFrameOut   : out std_logic_vector(BIT_WIDTH-1 downto 0);
@@ -137,6 +138,7 @@ architecture Behavioral of AdcReadout is
    signal iBitslipGoodCnt     : std_logic_vector(15 downto 0) := (others => '0');
 
    signal nPipeOut            : natural := 0;
+   signal adcChanMaskR        : std_logic_vector(31 downto 0);
 
 
 --   -- Vivado attributes to keep signals (for debugging)
@@ -565,7 +567,6 @@ begin
             rst    => '0',
             inpa   => adcDataOutR(iCH),
             clkb   => sysClk,
-            --outb   => adcDataOut(iCH)
             outb   => adcDataOutSysClk(iCH)
          );
    end generate OUTSYNC_GEN;
@@ -590,17 +591,26 @@ begin
          clkb  => sysClk,
          outb  => adcDataValidSysClk
       );
-   process (sysClk)
-   begin
-      if rising_edge (sysClk) then
-         if adcSync = '1' then
-            adcDataValid <= '1';
-            adcDataOut   <= adcDataOutSysClk;
-         else
-            adcDataValid <= '0';
+
+   ADCOUT_GEN : for i in 0 to 2*N_DATA_LINES-1 generate 
+      process (sysClk)
+      begin
+         if rising_edge (sysClk) then
+            adcChanMaskR(i) <= adcChanMask(i);
+            if adcSync = '1' then
+               adcDataValid <= '1';
+               
+               if adcChanMaskR(i) = '1' then
+                  adcDataOut(i)   <= adcDataOutSysClk(i);
+               else 
+                  adcDataOut(i)   <= (others => '0');
+               end if;
+            else
+               adcDataValid <= '0';
+            end if;
          end if;
-      end if;
-   end process;
+      end process;
+   end generate ADCOUT_GEN;
 
 
    doBitslipFrame <= doBitslipAuto;

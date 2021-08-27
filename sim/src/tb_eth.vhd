@@ -33,7 +33,7 @@ end tb_eth;
 
 architecture Behavioral of tb_eth is
 
-   constant clock_period : time := 20 ns;
+   constant clock_period : time := 8 ns;
    signal clk : std_logic;
 
    signal userTxData      : slv(7 downto 0);
@@ -44,7 +44,7 @@ architecture Behavioral of tb_eth is
    signal adcBufEthEna      : sl := '0';
    signal adcBufEthAddrInc  : sl := '0';
    signal adcBufEthAddrRst  : sl := '0';
-   signal adcBufEthAddr     : slv(7 downto 0)           := (others => '0');
+   signal adcBufEthAddr     : slv(9 downto 0)           := (others => '0');
    signal adcBufEthChan     : slv(5 downto 0)           := (others => '0');
    signal adcBufEthData     : slv16; --slv(11 downto 0); --: AdcDataArray(0 downto 0) := (others => (others => '0'));
 
@@ -57,6 +57,8 @@ architecture Behavioral of tb_eth is
    signal drsBusy         : sl := '0';
    signal drsRdReq        : sl := '0';
    signal drsRdAck        : sl := '0';
+
+   signal evtBusy         : std_logic := '0';
 
    signal drsCnt          : slv16 := (others => '0');
 
@@ -85,7 +87,7 @@ begin
       ADC_CHIPS_NUMBER    => 1,
       ADC_CHANNELS_NUMBER => 2,
       ADC_DATA_WIDTH      => 12,
-      ADC_DATA_DEPTH      => 8 
+      ADC_DATA_DEPTH      => 10 
    )
    port map(
       sysClk        => clk, --adcDataClk,
@@ -126,14 +128,14 @@ begin
    -------------------------------------------------
    U_EventBuilder : entity work.LappdEventBuilder
       generic map (
-         ADC_DATA_DEPTH => 8 
+         ADC_DATA_DEPTH => 10 
       )
       port map (
          clk               => clk,
          rst               => '0',
                        
          trg               => trg,
-         hitsMask          =>  X"0000_0000_0000_000" & b"0011",
+         hitsMask          =>  X"0000_0000_0000_000" & b"0001",
          boardID           => (others => '1'),
 
          udpStartPort      => x"3000", 
@@ -141,13 +143,11 @@ begin
          udpNumOfPorts     => x"0004",
    
 
-         nSamples          => X"0010", --X"0008",
-         nSamplInPacket    => x"0008", --x"0200", --X"0004",
+         nSamples          => x"0400", --X"0010", --X"0008",
+         nSamplInPacket    => x"0200", --X"0004",
          drsWaitStart      => x"0000",
 
          adcConvClk        => '0',
-
-         tAdcChan          => 0,
 
          rdEnable          => adcBufEthEna,
          rdAddr            => adcBufEthAddr,
@@ -166,7 +166,8 @@ begin
          evtData           => ethEvtData,
          evtNFrames        => ethEvtNumberOfFrames,
          ethReady          => ethEvtReady,
-         fragDisable       => '0'
+         fragDisable       => '0',
+         evtBusy           => evtBusy
       );
    -------------------------------------------------
 
@@ -323,6 +324,8 @@ begin
       trg <= '1';
       wait until clk = '1';
       trg <= '0';
+
+      wait until evtBusy = '0';
 
 
       wait for 10 us;

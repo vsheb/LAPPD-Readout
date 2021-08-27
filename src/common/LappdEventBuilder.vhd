@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
    use ieee.std_logic_unsigned.all;
-library work;
+
 use work.UtilityPkg.all;
 use work.LappdPkg.All;
 
@@ -28,9 +28,13 @@ entity LappdEventBuilder is
       adcConvClk        : in sl; -- for syncronisation DRS readout with ADC sampling
       timerClkRaw       : in slv64;
 
-      tAdcChan          : in integer; -- debug FIXME remove
       drsStopSample     : Word10Array(0 to 7);
       drsWaitStart      : in slv16 := (others => '0');
+
+      zeroSupMode       : in sl    := '0'; -- 0 -- or, 1 -- and
+      zeroSupMaskOr     : in slv64 := (others => '1');
+      zeroSupMaskAnd    : in slv64 := (others => '0');
+      sendNullHits      : in sl    := '1'; 
 
       -- enable buffer read from here, disable reading via reg interface
       rdEnable          : out sl;
@@ -129,12 +133,15 @@ architecture behav of LappdEventBuilder is
    end;
    -------------------------------------------------------------------------------
 
+   constant Slv64Zero_C : slv64 := (others => '0');
+
    -------------------------------------------------------------------------------
    ---------------- TYPE DEFENITIONS ---------------------------------------------
    -------------------------------------------------------------------------------
    type StateType is (IDLE_S, TRG_RSVD_S, SEND_DRS_REQ_S, 
                       WAIT_DRS_START_S, WAIT_DRS_FINISH_S, 
-                      PREP_HIT_MASK_S, WAIT_EVT_READY_S, 
+                      WAIT_HIT_MASK_S, PREP_HIT_DATA_S, PREP_DRS_NUM_S,
+                      HIT_MASK_ANALYZE_S, WAIT_EVT_READY_S, 
                       INI_EVT_HDR_S, SND_EVT_HDR_S, 
                       INI_HIT_HDR_S, SND_HIT_HDR_S, SND_HIT_PLD_S, SND_HIT_FTR_S );
 
@@ -179,6 +186,11 @@ architecture behav of LappdEventBuilder is
       evtHeaderWordsArray : LappdDataArrayType(0 to C_LappdNumberOfEvtHeaderWords-1);
       hitHeaderWordsArray : LappdDataArrayType(0 to C_LappdNumberOfHitHeaderWords-1);
       evtBusy             : sl; 
+      zeroSupMode         : sl;
+      zeroSupMaskOr       : slv64;
+      zeroSupMaskAnd      : slv64;
+      sendNullHits        : sl; 
+
 
    end record;
    
@@ -222,7 +234,11 @@ architecture behav of LappdEventBuilder is
       evtHeaderWordsArray => (others => (others => '0')),
       hitHeaderWordsArray => (others => (others => '0')),
       dbg                 => (others => '0'),
-      evtBusy             => '0'
+      evtBusy             => '0',
+      zeroSupMode         => '0',
+      zeroSupMaskOr       => (others => '0'),
+      zeroSupMaskAnd      => (others => '0'),
+      sendNullHits        => '0'
    );
    -------------------------------------------------------------------------------
 
@@ -237,26 +253,13 @@ architecture behav of LappdEventBuilder is
 
 begin
 
-   -----------------------------------------------
-   -- temporary. TODO switch to EeveeTimer timestamping
-   -----------------------------------------------
-   --process (clk)
-   --begin
-      --if rising_edge (clk) then
-         --if rst = '1' then
-            --clkCnt <= (others => '0');
-         --else
-            --clkCnt <= clkCnt + 1;
-         --end if;
-      --end if;
-   --end process;
-   -----------------------------------------------
 
-
-
-   process(trg, r_cur, drsBusy, ethBusy, rdData, ethReady, nSamples, nSamplInPacket, tAdcChan, fragDisable, 
+   -------------------------------------------------------------------------------
+   -- Combinational logic
+   -------------------------------------------------------------------------------
+   process(trg, r_cur, drsBusy, ethBusy, rdData, ethReady, nSamples, nSamplInPacket, fragDisable, 
            drsWaitStart, drsStopSample, adcConvClk, hitsMask, boardID, timerClkRaw, drsDone, 
-           udpStartPort, udpNumOfPorts)
+           udpStartPort, udpNumOfPorts, zeroSupMode, zeroSupMaskAnd, zeroSupMaskOr, sendNullHits)
       variable evtHeader : LappdEvtHeaderFormat := C_EvtHeaderZero;
       variable hitHeader : LappdHitHeaderFormat := C_HitHeaderZero;
       variable evtHeaderWordsArray : LappdDataArrayType(0 to C_LappdNumberOfEvtHeaderWords-1) := (others => (others => '0'));
@@ -299,12 +302,19 @@ begin
             r_nxt.udpNumOfPorts <= udpNumOfPorts;
             r_nxt.evtBusy       <= '0';
 
+            r_nxt.zeroSupMode    <= zeroSupMode;
+            r_nxt.zeroSupMaskOr  <= zeroSupMaskOr;
+            r_nxt.zeroSupMaskAnd <= zeroSupMaskAnd;
+
+            r_nxt.sendNullHits   <= sendNullHits;
+
             r_nxt.udpStartPort  <= udpStartPort; -- little endian from MB
             if r_cur.udpCurrentPort = x"0000" then
                r_nxt.udpCurrentPort <= udpStartPort;
             end if;
 
-            if trg = '1' and ethBusy = '0' and drsBusy = '0' then
+            --if trg = '1' and ethBusy = '0' and drsBusy = '0' then
+            if trg = '1' and drsBusy = '0' then
                r_nxt.state      <= TRG_RSVD_S;
                r_nxt.evtBusy  <= '1';
             end if;
@@ -365,22 +375,52 @@ begin
             r_nxt.dbg <= X"0002";
             if drsDone = '1' then
                
-               r_nxt.stateCnt <= 0;
-               r_nxt.state  <= PREP_HIT_MASK_S;
-               r_nxt.drsReq <= '0';
+               r_nxt.stateCnt  <= 0;
+               r_nxt.state     <= WAIT_HIT_MASK_S;
+               r_nxt.drsReq    <= '0';
             end if;
 
-         when PREP_HIT_MASK_S =>
+         when WAIT_HIT_MASK_S =>
             r_nxt.stateCnt <= r_cur.stateCnt + 1;
-            r_nxt.hitsMask      <= hitsMask;
-            r_nxt.hitsMaskCur   <= hitsMask;
-            r_nxt.drsNum        <= fGetDrsNum(r_cur.adcChannel);
-            r_nxt.adcChannel    <= fGetNextHit(r_cur.hitsMask);
-            r_nxt.hitsNumber    <= fCalcNumberOfHits(r_cur.hitsMask);
+            r_nxt.hitsMask     <= hitsMask;
+            r_nxt.hitsMaskCur  <= hitsMask;
             -- ADC data has latency 
             if r_cur.stateCnt = 128 then 
                r_nxt.stateCnt      <= 0;
-               r_nxt.state  <= WAIT_EVT_READY_S;
+               if r_cur.hitsMask /= Slv64Zero_C or r_cur.sendNullHits = '1' then 
+                  r_nxt.state  <= PREP_HIT_DATA_S;
+                  r_nxt.stateCnt  <= 0;
+               else
+                  r_nxt.state  <= IDLE_S;
+               end if;
+            end if;
+
+         -- below were needed to improve timings 
+         when PREP_HIT_DATA_S =>
+            r_nxt.stateCnt <= r_cur.stateCnt + 1;
+            if r_cur.stateCnt = 4 then 
+               r_nxt.state  <= PREP_DRS_NUM_S;
+               r_nxt.adcChannel   <= fGetNextHit(r_cur.hitsMask);
+               r_nxt.hitsNumber   <= fCalcNumberOfHits(r_cur.hitsMask);
+            end if;
+
+         when PREP_DRS_NUM_S => 
+            r_nxt.state        <= HIT_MASK_ANALYZE_S;
+            r_nxt.drsNum       <= fGetDrsNum(r_cur.adcChannel);
+
+         when HIT_MASK_ANALYZE_S =>
+            if zeroSupMode = '0' then
+               if (r_cur.hitsMask and r_cur.zeroSupMaskOr) /= Slv64Zero_C then 
+                  r_nxt.state  <= WAIT_EVT_READY_S;
+               else 
+                  r_nxt.state  <= IDLE_S;
+               end if;
+            else
+               if (r_cur.hitsMask and r_cur.zeroSupMaskAnd) = r_cur.zeroSupMaskAnd then 
+                  r_nxt.state  <= WAIT_EVT_READY_S;
+               else 
+                  r_nxt.state  <= IDLE_S;
+               end if;
             end if;
 
          -- prepare some event data
@@ -505,8 +545,12 @@ begin
       end case;
 
    end process;
+   -------------------------------------------------------------------------------
 
 
+   -------------------------------------------------------------------------------
+   -- Next state sequential process
+   -------------------------------------------------------------------------------
    process(clk) 
    begin
       if rising_edge(clk) then
@@ -517,8 +561,11 @@ begin
          end if;
       end if;
    end process;
+   -------------------------------------------------------------------------------
 
-   ------ outputs -------------------
+   -------------------------------------------------------------------------------
+   -- Map outputs
+   -------------------------------------------------------------------------------
    debug              <= r_cur.dbg & std_logic_vector(to_unsigned(r_cur.iWordCnt,16));
    evtTrigger         <= r_cur.evtTrigger; 
    evtData            <= r_cur.evtData;
@@ -532,7 +579,7 @@ begin
    evtNumber          <= r_cur.evtNumber;
    
    udpCurrentPort     <= r_cur.udpCurrentPort;
-   ----------------------------------
+   -------------------------------------------------------------------------------
    
 
 end behav;

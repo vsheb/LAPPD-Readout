@@ -273,13 +273,16 @@ architecture Behavioral of A22 is
    -- aliases for easy access to the configuration registers
    ----------------------------------------------
    -- MODE register
-   alias a_modeAdcBufEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADCBUF_WREN_BIT);
-   alias a_modeExtTrgEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_EXTTRG_EN_BIT);
-   alias a_modeUseClkIn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_CLKIN_TRG_BIT);
-   alias a_modePedSubEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_PEDSUB_EN_BIT);
-   alias a_modeZerSupEn : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ZERSUP_EN_BIT);
-   alias a_modeAdcPdnF  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_F_BIT);
-   alias a_modeAdcPdnG  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_G_BIT);
+   alias a_modeAdcBufEn  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADCBUF_WREN_BIT);
+   alias a_modeExtTrgEn  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_EXTTRG_EN_BIT);
+   alias a_modeUseClkIn  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_CLKIN_TRG_BIT);
+   alias a_modePedSubEn  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_PEDSUB_EN_BIT);
+   alias a_modeZerSupEn  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ZERSUP_EN_BIT);
+   alias a_modeAdcPdnF   : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_F_BIT);
+   alias a_modeAdcPdnG   : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ADC_PDN_G_BIT);
+   alias a_modeZSupMode  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ZERSUP_MODE_BIT);
+   alias a_modeZSupNeg   : sl is regArrCfg(getRegInd("MODE"))(C_MODE_ZERSUP_NEG_BIT);
+   alias a_modeSendNull  : sl is regArrCfg(getRegInd("MODE"))(C_MODE_SENDNULLEVT_BIT);
 
    -- CMD register
    alias a_cmdReset      : sl is regArrCfg(getRegInd("CMD"))(C_CMD_RESET_BIT);
@@ -322,7 +325,16 @@ architecture Behavioral of A22 is
 
    alias a_ChanMaskAdc1   : slv32 is regArrCfg(getRegInd("ADCCHANMASK_0"));
    alias a_ChanMaskAdc2   : slv32 is regArrCfg(getRegInd("ADCCHANMASK_1"));
+
+   alias a_ZerSupMaskAnd1 : slv32 is regArrCfg(getRegInd("ZERSUPMASKAND_0"));
+   alias a_ZerSupMaskAnd2 : slv32 is regArrCfg(getRegInd("ZERSUPMASKAND_1"));
+   alias a_ZerSupMaskOr1  : slv32 is regArrCfg(getRegInd("ZERSUPMASKOR_0"));
+   alias a_ZerSupMaskOr2  : slv32 is regArrCfg(getRegInd("ZERSUPMASKOR_1"));
+   alias a_ZerSupSmpThr   : slv10 is regArrCfg(getRegInd("ZERSUPSAMP"))(9 downto 0);
    ----------------------------------------------
+
+   signal zeroSupMaskOr   : slv64;
+   signal zeroSupMaskAnd  : slv64;
 
    signal extTrigCnt   : slv32 := (others => '0');
 
@@ -334,15 +346,14 @@ architecture Behavioral of A22 is
 
 begin
    
-   ethSync  <= ethRxLinkSync;
-   ethReady <= ethAutoNegDone;
+   ethSync       <= ethRxLinkSync;
+   ethReady      <= ethAutoNegDone;
 
-   tca_Cntl   <= regArrCfg(getRegInd("MODE"))(C_MODE_TCA_ENA_BIT);
-   rfSwitch   <= regArrCfg(getRegInd("MODE"))(C_MODE_RFSWITCH_BIT);
+   tca_Cntl      <= regArrCfg(getRegInd("MODE"))(C_MODE_TCA_ENA_BIT);
+   rfSwitch      <= regArrCfg(getRegInd("MODE"))(C_MODE_RFSWITCH_BIT);
 
-   extTrigInDir <= '0';
-
-   extClkInDir <= '0';
+   extTrigInDir  <= '0';
+   extClkInDir   <= '0';
 
    -- mux select on the AC701
    --SFP_MGT_CLK_SEL0 <= '0';
@@ -371,11 +382,11 @@ begin
          -- Note stupid LR parser shit, so all <= need to preceed =>
          -- Wire the S_AXIS (slave axi stream)
          -- Drive our signals with the shit coming out from this entity
-         S_AXIS_1G_tdata  => userRxData,
-         S_AXIS_1G_tready => userRxDataReady,
-         S_AXIS_1G_tvalid => userRxDataValid,
-         S_AXIS_1G_tlast  => userRxDataLast,
-         reg_tkeep        => X"F",
+         S_AXIS_1G_tdata       => userRxData,
+         S_AXIS_1G_tready      => userRxDataReady,
+         S_AXIS_1G_tvalid      => userRxDataValid,
+         S_AXIS_1G_tlast       => userRxDataLast,
+         reg_tkeep             => X"F",
 
          -- Pins that will eventually connect elsewhere on the boad
          S_AXIS_DATAOUT_tdata  => axiDataOut_tdata,
@@ -392,20 +403,20 @@ begin
          -- Wire the M_AXIS (master axi stream)
 
          -- to the PHY with the uBlaze produced outs 
-         M_AXIS_1G_tdata => userTxData,
-         M_AXIS_1G_tvalid => userTxDataValid,
-         M_AXIS_1G_tlast => userTxDataLast,
-         M_AXIS_1G_tready => userTxDataReady,
+         M_AXIS_1G_tdata       => userTxData,
+         M_AXIS_1G_tvalid      => userTxDataValid,
+         M_AXIS_1G_tlast       => userTxDataLast,
+         M_AXIS_1G_tready      => userTxDataReady,
 
          -- Wire in the IO port
-         IO_BUS_addr_strobe => regAddrStrb,
-         IO_BUS_address => regAddr,
-         IO_BUS_byte_enable => regDataByteEn,
-         IO_BUS_read_data => regRdData,
-         IO_BUS_read_strobe => regRdStrb,
-         IO_BUS_ready => regReady,
-         IO_BUS_write_data => regWrData,
-         IO_BUS_write_strobe => regWrStrb
+         IO_BUS_addr_strobe    => regAddrStrb,
+         IO_BUS_address        => regAddr,
+         IO_BUS_byte_enable    => regDataByteEn,
+         IO_BUS_read_data      => regRdData,
+         IO_BUS_read_strobe    => regRdStrb,
+         IO_BUS_ready          => regReady,
+         IO_BUS_write_data     => regWrData,
+         IO_BUS_write_strobe   => regWrStrb
 
          -- Wire in the bus reset
          --bus_struct_reset => bus_struct_reset                   
@@ -463,32 +474,32 @@ begin
    U_RegControl : entity work.RegControl 
       port map (
          -- Clock and synchronous reset
-         clk => ethClk125,
-         sRst => '0', 
+         clk             => ethClk125,
+         sRst            => '0', 
          --bus_struct_reset(0),
          
          -- Register interface to Microblaze IO module
-         regAddr       => regAddr,
-         regAddrStrb   => regAddrStrb,
-         regWrStrb     => regWrStrb,
-         regRdStrb     => regRdStrb,
-         regReady      => regReady,
-         regWrData     => regWrData,
-         regRdData     => regRdData,
-         regDataByteEn => regDataByteEn,
+         regAddr         => regAddr,
+         regAddrStrb     => regAddrStrb,
+         regWrStrb       => regWrStrb,
+         regRdStrb       => regRdStrb,
+         regReady        => regReady,
+         regWrData       => regWrData,
+         regRdData       => regRdData,
+         regDataByteEn   => regDataByteEn,
 
          -- registers content in/out to top
-         lappdCmd      => lappdCmd,
-         regArrayOut   => regArrCfg,
-         regArrayIn    => regArrSta,
-
-         timerClkRaw   => timerClkRaw,
+         lappdCmd        => lappdCmd,
+         regArrayOut     => regArrCfg,
+         regArrayIn      => regArrSta,
+                         
+         timerClkRaw     => timerClkRaw,
 
          -- ADC buffer IO
-         adcBufReq     => adcBufReq,
-         adcBufAck     => adcBufAck,
-         adcBufAddr    => adcBufRdAddr,
-         adcBufData    => adcBufRdData32,
+         adcBufReq       => adcBufReq,
+         adcBufAck       => adcBufAck,
+         adcBufAddr      => adcBufRdAddr,
+         adcBufData      => adcBufRdData32,
 
          -- Pedestal memory
          drsPedReq       => pedRegReq,
@@ -499,27 +510,23 @@ begin
          drsPedRdData    => pedRegRdData,
 
          -- DRS regs
-         drsRegMode    => drsRegMode,
-         drsRegData    => drsRegData,
-         drsRegReq     => drsRegReq,
-         drsRegAck     => drsRegAck,
+         drsRegMode      => drsRegMode,
+         drsRegData      => drsRegData,
+         drsRegReq       => drsRegReq,
+         drsRegAck       => drsRegAck,
 
          -- DAC serial IO
-         dacSclk       => dacSclk, --: out sl;
-         dacCsb        => dacCsb,  --: out sl;
-         dacSin        => dacSin,  -- out sl;
-         dacSout       => dacSout, -- in  sl;
+         dacSclk         => dacSclk, --: out sl;
+         dacCsb          => dacCsb,  --: out sl;
+         dacSin          => dacSin,  -- out sl;
+         dacSout         => dacSout, -- in  sl;
 
          -- DAC serial IO
-         adcSclk       => adcSclk, --: out sl;
-         adcCsb        => adcCsb,  --: out sl;
-         adcSin        => adcSin,  -- out sl;
-         adcSout       => iAdcSout  -- in  sl;
+         adcSclk         => adcSclk, --: out sl;
+         adcCsb          => adcCsb,  --: out sl;
+         adcSin          => adcSin,  -- out sl;
+         adcSout         => iAdcSout  -- in  sl;
       );
-      -- at the moment chip is selected by CSB signal
-      -- now multiplexing for SCLK and SOUT just concatinate and OR
-      -- FIXME ?
-      --adcSclk  <= iAdcSclk;
       iAdcSout <= adcSout(0) or adcSout(1);
    -------------------------------------------------
 
@@ -705,6 +712,7 @@ begin
          bitslipCnt    => regArrSta(getRegInd("BITSLIPCNT_0")+iADC),
          adcFrameOut   => open, 
          bitslipGood   => iAdcBitslipGood(iADC),
+         adcChanMask   => regArrCfg(getRegInd("ADCHARDMASK_0")+iADC),
 
          -- output data 
          adcDataOut    => adcData(G_N_ADC_CHN*iADC to G_N_ADC_CHN*(iADC+1)-1 ), 
@@ -784,22 +792,25 @@ begin
       ADC_DATA_DEPTH      => G_ADC_BIT_DEPTH
    )
    port map(
-      sysClk        => ethClk125, 
-      sysRst        => '0', 
+      sysClk            => ethClk125, 
+      sysRst            => '0', 
 
       -- reset write pointer to 0
-      rstWrAddr     => eventBuilderTrg,
+      rstWrAddr         => eventBuilderTrg,
 
       -- enable pedestal subtraction
-      pedSubOn      => a_modePedSubEn,
+      pedSubOn          => a_modePedSubEn,
 
       -- thresholds for zero suppression
-      zeroThreshArr  => zeroThreshArr,
-
-      -- input data
-      WrEnable      => adcBufWrEn,
-      dataValid     => adcDataValid,
-      wrData        => adcData,
+      zeroThreshArr     => zeroThreshArr,
+      zsupPolarity      => a_modeZSupNeg,
+      zsupNsamples      => a_ZerSupSmpThr,
+                       
+                       
+      -- input data   
+      WrEnable         => adcBufWrEn,
+      dataValid        => adcDataValid,
+      wrData           => adcData,
       
       -- drs4 pedestals data
       pedArr           => pedArr,
@@ -808,23 +819,23 @@ begin
       drsStopSmpValid  => drsStopSampleValid,
 
       -- eth readout interface
-      rdEthEnable   => adcBufEthEna,
-      rdEthAddr     => adcBufEthAddr,
-      rdEthChan     => adcBufEthChan,
-      rdEthData     => adcBufEthData,
+      rdEthEnable      => adcBufEthEna,
+      rdEthAddr        => adcBufEthAddr,
+      rdEthChan        => adcBufEthChan,
+      rdEthData        => adcBufEthData,
       
       -- reg interface
-      rdChan        => a_adcDbgChan,
-      rdAddr        => adcBufRdAddr,
-      rdReq         => adcBufReq,
-      rdAck         => adcBufAck,
-      rdData        => adcBufRdData,
-
-      hitsThrMask   => adcBufThrMask,
-
-      -- debug      
-      curAddr       => adcBufCurAddr,
-      nWordsWrtn    => regArrSta(getRegInd("ADCWORDSWRITTEN"))
+      rdChan           => a_adcDbgChan,
+      rdAddr           => adcBufRdAddr,
+      rdReq            => adcBufReq,
+      rdAck            => adcBufAck,
+      rdData           => adcBufRdData,
+                       
+      hitsThrMask      => adcBufThrMask,
+                       
+      -- debug         
+      curAddr          => adcBufCurAddr,
+      nWordsWrtn       => regArrSta(getRegInd("ADCWORDSWRITTEN"))
    );
    -------------------------------------------------
 
@@ -889,6 +900,8 @@ begin
    -- Event builder
    -------------------------------------------------
    eventBuilderTrg <= a_cmdDrsRdStart or extTrg;
+   zeroSupMaskAnd  <= a_ZerSupMaskAnd2 & a_ZerSupMaskAnd1;
+   zeroSupMaskOr   <= a_ZerSupMaskOr2 & a_ZerSupMaskOr1;
    U_EventBuilder : entity work.LappdEventBuilder
       generic map(
         ADC_DATA_DEPTH     => G_ADC_BIT_DEPTH
@@ -910,10 +923,14 @@ begin
 
          nSamples          => a_drsNSamples, 
          nSamplInPacket    => a_nSamplInPacket,
-         tAdcChan          => to_integer(unsigned(a_adcDbgChan)),
          drsStopSample     => drsStopSampleArr,
 
          drsWaitStart      => a_drsWaitStart,
+
+         zeroSupMode       => a_modeZSupMode,
+         zeroSupMaskOr     => zeroSupMaskOr,
+         zeroSupMaskAnd    => zeroSupMaskAnd,
+         sendNullHits      => a_modeSendNull,
 
          fragDisable       => a_ebFragDisable,
 

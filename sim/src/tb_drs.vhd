@@ -87,7 +87,7 @@ begin
          phaseAdcSrClk => (others => '0'),
          refClkRatio   => x"0000_0004",
          -- User requests
-         regMode       => '0',
+         regMode       => b"00",
          regData       => regData,
          regReq        => regReq,
          regAck        => regAck,

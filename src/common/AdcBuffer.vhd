@@ -26,6 +26,8 @@ entity AdcBuffer is
 
       -- thresholds for the zero suppression (in 2's compliment format)
       zeroThreshArr : in AdcDataArray(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
+      zsupPolarity  : in sl  := '0'; -- 0 - positive, 1 - negative
+      zsupNsamples  : in slv(9 downto 0) := (others => '0'); -- number of samples over threshold
 
       -- input adc data
       wrEnable      : in  sl;
@@ -43,8 +45,6 @@ entity AdcBuffer is
       rdEthChan     : in  slv(5 downto 0) := (others => '0');
       rdEthAddr     : in  slv(ADC_DATA_DEPTH-1 downto 0);
       rdEthData     : out slv16; --(ADC_DATA_WIDTH-1 downto 0);
-      
-      adcBufReady   : out sl;
       
       -- reg interface 
       rdReq         : in  sl;
@@ -87,7 +87,6 @@ architecture adcBufArch of AdcBuffer is
 
 
    signal   wrDataMerged      :  AdcDataVecArrayType              := (others => (others => '0'));
-   signal   wrDataMerged_r    :  AdcDataVecArrayType              := (others => (others => '0'));
                                                                   
    signal   rdAddr_regIfc     : slv(ADC_DATA_DEPTH-1 downto 0)    := (others => '0');
    signal   rdAddr_i          : slv(ADC_DATA_DEPTH-1 downto 0)    := (others => '0');
@@ -114,20 +113,23 @@ architecture adcBufArch of AdcBuffer is
 
    type     SignedArrayType     is array(integer range<>) of signed(ADC_DATA_WIDTH-1 downto 0);
    signal   minAdcArr         : SignedArrayType(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1) := (others => (others => '0'));
-
+   
+   signal   zsupPolarity_r    : sl; 
+   signal   zsupNsamples_r    : slv(9 downto 0);
+   signal   smpOverThrCnt     : Word10Array(0 to ADC_CHANNELS_NUMBER*ADC_CHIPS_NUMBER-1);
 
    ----------------------------------------------
    -- FSM states
    ----------------------------------------------
-   type PedStatesType        is (PED_WAIT_STOP_SAMPLE_S, NEXT_SAMPLE_S);
+   type PedStatesType  is (PED_WAIT_STOP_SAMPLE_S, NEXT_SAMPLE_S);
    signal   pedState          : PedStatesType := PED_WAIT_STOP_SAMPLE_S;
 
 
 begin
 
-   ---------------------------------------------------------
+   ---------------------------------------------------------------------
    -- take DRS4 pedestals for the current sample
-   ---------------------------------------------------------
+   ---------------------------------------------------------------------
    process (sysClk)
    begin
       if rising_edge (sysClk) then
@@ -164,8 +166,9 @@ begin
       end if;
    end process;
    pedSmpNumArr <= pedSmpNumArr_i;
-   ---------------------------------------------------------
+   ---------------------------------------------------------------------
 
+   ---------------------------------------------------------------------
    GEN_ADC_CHIP : for iAdc in 0 to ADC_CHIPS_NUMBER-1 generate
       GEN_ADC_CHAN : for iChan in 0 to ADC_CHANNELS_NUMBER-1 generate
          process (sysClk)
@@ -178,8 +181,6 @@ begin
          begin
             if rising_edge (sysClk) then
                
-               --maxAdcArr(ch) <= subMax - ped;
-
                adc := to_integer(signed(wrData_r(ch)));
 
                if pedSubOn_r = '1' then
@@ -188,9 +189,9 @@ begin
                   ped := 0;
                end if;
 
-               --minAdcArr(ch) <= subMin + ped;
                min := to_integer(subMin) + ped;
 
+               -- make underflow/overflow flags
                if adc < min then
                   -- underflow
                   sub := to_integer(subMin);
@@ -204,11 +205,6 @@ begin
                   fla := b"0000";
                end if;
 
-               --if sub < to_integer(subMin) then
-                  --sub := to_integer(subMin); 
-               --end if;
-
-               --wrDataMerged(iAdc)(ADC_DATA_WIDTH*(iChan+1)-1 downto ADC_DATA_WIDTH*(iChan)) <= 
                wrDataMerged(iAdc)(16*(iChan+1)-1 downto 16*(iChan)) <= 
                   std_logic_vector(to_signed(sub,ADC_DATA_WIDTH)) & fla;
                adcDataPedSub(ch) <= std_logic_vector(to_signed(sub,ADC_DATA_WIDTH));
@@ -221,7 +217,6 @@ begin
       begin
          if rising_edge (sysClk) then
             wrData_r <= wrData;
-            --wrDataMerged_r(iAdc)   <= wrDataMerged(iAdc);
             wrEnable_r(iAdc) <= wrEnable and dataValid(iAdc);
             wrEnable_2r(iAdc) <= wrEnable_r(iAdc);
          end if;
@@ -247,7 +242,9 @@ begin
          );
       ---------------------------------------------------
 
+      ---------------------------------------------------
       -- manage write address
+      ---------------------------------------------------
       process(sysClk)
       begin
          if rising_edge(sysClk) then
@@ -258,11 +255,25 @@ begin
             end if;
          end if;
       end process;
+      ---------------------------------------------------
 
    end generate GEN_ADC_CHIP;
+   ---------------------------------------------------------------------
 
 
+   ---------------------------------------------------------------------
    -- zero suppression mask
+   ---------------------------------------------------------------------
+   process (sysClk)
+   begin
+      if rising_edge (sysClk) then
+         if rstWrAddr = '1' then
+            zsupPolarity_r <= zsupPolarity;
+            zsupNsamples_r <= zsupNsamples;
+         end if;
+      end if;
+   end process;
+
    GEN_ZEROSUP_ADC_CHIP : for iAdc in 0 to ADC_CHIPS_NUMBER-1 generate
       GEN_ZEROSUP_ADC_CHAN : for iChan in 0 to ADC_CHANNELS_NUMBER-1 generate
          process (sysClk)
@@ -270,12 +281,22 @@ begin
          begin
             if rising_edge (sysClk) then
                if rstWrAddr = '1' then
-                  hitsMask_i(ch) <= '0';
+                  hitsMask_i(ch)    <= '0';
+                  smpOverThrCnt(ch) <= (others => '0');
                else 
                   if wrEnable_2r(iAdc) = '1' then
-                     if signed(adcDataPedSub(ch)) >= signed(zeroThreshArr(ch)) then
-                        hitsMask_i(ch) <= '1';
+                     if zsupPolarity_r = '0' then
+                        if signed(adcDataPedSub(ch)) >= signed(zeroThreshArr(ch)) then
+                           smpOverThrCnt(ch) <= std_logic_vector(unsigned(smpOverThrCnt(ch)) + 1);
+                        end if;
+                     else 
+                        if signed(adcDataPedSub(ch)) <= signed(zeroThreshArr(ch)) then
+                           smpOverThrCnt(ch) <= std_logic_vector(unsigned(smpOverThrCnt(ch)) + 1);
+                        end if;
                      end if;
+                  end if;
+                  if unsigned(smpOverThrCnt(ch)) > unsigned(zsupNsamples_r) then
+                     hitsMask_i(ch) <= '1';
                   end if;
                end if;
             end if;
@@ -284,8 +305,9 @@ begin
    end generate GEN_ZEROSUP_ADC_CHIP;
 
    hitsThrMask <= hitsMask_i;
+   ---------------------------------------------------------------------
 
-   process(rdChan_i, rdAdc, rdAdcChan_i)
+   process(rdChan_i)
    begin
       if to_integer(unsigned(rdChan_i)) < 32 then
          rdAdc <= 0;
@@ -309,8 +331,6 @@ begin
          rdReqRR   <= rdReqR;
 
          rdAck     <= rdReqR;
-         --rdData_r  <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i); 
-         --ethData_r <= localRdData(rdAdc)((rdAdcChan_i+1)*ADC_DATA_WIDTH-1 downto ADC_DATA_WIDTH*rdAdcChan_i);
          rdData_r  <= localRdData(rdAdc)((rdAdcChan_i+1)*16-1 downto 16*rdAdcChan_i); 
          ethData_r <= localRdData(rdAdc)((rdAdcChan_i+1)*16-1 downto 16*rdAdcChan_i);
 

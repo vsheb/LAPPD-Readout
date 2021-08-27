@@ -26,7 +26,7 @@ library work;
 package RegDefs is
 
    ----- FW VERSION -----------------------------------
-   constant FW_VERSION     : integer := 111;
+   constant FW_VERSION     : integer := 113;
    constant FW_VERSION_SLV : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(FW_VERSION, 32));
    ----------------------------------------------------
 
@@ -124,7 +124,12 @@ package RegDefs is
     ( "EXTTRGCNT       ",  X"0800", X"0000_0000", B"10",1),
     ( "CUREVTNUM       ",  X"0808", X"0000_0000", B"10",1),
     ( "DRSPLLLOSCNT    ",  X"0810", X"0000_0000", B"10",8),
-    ( "ADCTHRESHMASK   ",  X"0850", X"0000_0000", B"10",2)
+    ( "ADCTHRESHMASK   ",  X"0850", X"0000_0000", B"10",2),
+    ( "ZERSUPMASKAND   ",  X"0860", X"0000_0000", B"01",2),
+    ( "ZERSUPMASKOR    ",  X"0868", X"FFFF_FFFF", B"01",2),
+    ( "ADCHARDMASK     ",  X"0870", X"FFFF_FFFF", B"01",2),
+    ( "ZERSUPSAMP      ",  X"0878", X"0000_0000", B"01",1)
+
   );
   ---------------------------------------------------
 
@@ -152,6 +157,9 @@ package RegDefs is
   constant C_MODE_ADC_PDN_F_BIT    : natural := 10;
   constant C_MODE_ADC_PDN_G_BIT    : natural := 11;
   constant C_MODE_RFSWITCH_BIT     : natural := 13;
+  constant C_MODE_ZERSUP_MODE_BIT  : natural := 14;
+  constant C_MODE_ZERSUP_NEG_BIT   : natural := 15;
+  constant C_MODE_SENDNULLEVT_BIT  : natural := 16;
 
   function vec2str(value : std_logic_vector) return string;
 
